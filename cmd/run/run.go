@@ -1,25 +1,27 @@
 package run
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
 	"maps"
 	"os"
-	"strings"
 	"text/template"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/jackc/puddle/v2"
 	"github.com/urfave/cli/v2"
 	slogctx "github.com/veqryn/slog-context"
+	"golang.org/x/sync/errgroup"
 )
 
 var Flags = []cli.Flag{
 	&cli.StringFlag{Name: "dsn", Value: "clickhouse://localhost:9000/default"},
 	&cli.IntFlag{Name: "batch-size", Value: 10000},
+	&cli.IntFlag{Name: "finalize-chan-size", Value: 1},
+	&cli.Uint64Flag{Name: "start-block", Value: 0},
 	&cli.StringSliceFlag{Name: "var"},
 }
 
@@ -29,12 +31,13 @@ func Command() *cli.Command {
 		Flags: Flags,
 		Action: func(ctx *cli.Context) error {
 			var (
-				path      = ctx.Args().Get(0)
-				dsn       = ctx.String("dsn")
-				batchSize = ctx.Int("batch-size")
-				flagVars  = ctx.StringSlice("var")
-				vars      = make(map[string]interface{})
-				logger    = slogctx.FromCtx(ctx.Context)
+				logger       = slogctx.FromCtx(ctx.Context)
+				path         = ctx.Args().Get(0)
+				dsn          = ctx.String("dsn")
+				batchSize    = ctx.Int("batch-size")
+				loadChanSize = ctx.Int("load-chan-size")
+				startBlock   = ctx.Uint64("start-block")
+				vars         = parseFlagVars(ctx.StringSlice("var"))
 			)
 
 			if len(path) == 0 {
@@ -45,9 +48,8 @@ func Command() *cli.Command {
 				batchSize = 100
 			}
 
-			for _, flagVar := range flagVars {
-				var k, v, _ = strings.Cut(flagVar, "=")
-				vars[k] = v
+			if loadChanSize <= 0 {
+				loadChanSize = 1
 			}
 
 			stat, err := os.Stat(path)
@@ -68,232 +70,285 @@ func Command() *cli.Command {
 				return err
 			}
 
-			chopts, err := clickhouse.ParseDSN(dsn)
+			var poolConf = puddle.Config[driver.Conn]{
+				MaxSize: int32(loadChanSize) + 3,
+			}
+
+			poolConf.Constructor = func(context.Context) (driver.Conn, error) {
+				chopts, err := clickhouse.ParseDSN(dsn)
+
+				if err != nil {
+					return nil, err
+				}
+
+				chopts.MaxOpenConns = 1
+				chconn, err := clickhouse.Open(chopts)
+
+				if err != nil {
+					return nil, err
+				}
+
+				return chconn, nil
+			}
+
+			poolConf.Destructor = func(conn driver.Conn) {
+				conn.Close()
+			}
+
+			pool, err := puddle.NewPool(&poolConf)
 
 			if err != nil {
 				return err
 			}
 
-			chconn, err := clickhouse.Open(chopts)
+			defer pool.Close()
+
+			chconn, err := pool.Acquire(ctx.Context)
 
 			if err != nil {
 				return err
 			}
 
-			defer chconn.Close()
+			defer chconn.Release()
 
-			if _, err := execFromTemplate(
+			md, err := execFromTemplate(
 				ctx.Context,
-				chconn,
+				chconn.Value(),
 				tmpl,
 				"setup.sql",
 				vars,
-			); err != nil {
-				return fmt.Errorf("failed to render setup.sql template: %w", err)
-			}
-
-			var (
-				runs      int
-				wroteRows uint64
 			)
 
-			for {
-				var (
-					t0         = time.Now()
-					startBlock uint64
-					endBlock   uint64
-				)
-
-				sb, md, err := selectSingleRowFromTemplate[startBlockRow](
-					ctx.Context,
-					chconn,
-					tmpl,
-					"start_block.sql",
-					vars,
-				)
-
-				if err != nil {
-					return fmt.Errorf("failed to execute start block query: %w", err)
-				}
-
-				logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "start_block.sql", md)
-
-				meb, md, err := selectSingleRowFromTemplate[maxEndBlockRow](
-					ctx.Context,
-					chconn,
-					tmpl,
-					"max_end_block.sql",
-					vars,
-				)
-
-				if err != nil {
-					return fmt.Errorf("failed to execute max end block query: %w", err)
-				}
-
-				logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "max_end_block.sql", md)
-
-				if md.Rows > 0 {
-					startBlock = sb.StartBlock
-				}
-
-				if startBlock == 0 && runs > 0 {
-					startBlock = uint64(runs) * uint64(batchSize)
-				}
-
-				endBlock = min(startBlock+uint64(batchSize)-1, meb.MaxEndBlock)
-
-				var runVars = maps.Clone(vars)
-				runVars["START_BLOCK"] = startBlock
-				runVars["END_BLOCK"] = endBlock
-
-				md, err = execFromTemplate(
-					ctx.Context,
-					chconn,
-					tmpl,
-					"etl.sql",
-					runVars,
-				)
-
-				if err != nil {
-					return fmt.Errorf("failed to render etl.sql template: %w", err)
-				}
-
-				runs += 1
-				wroteRows += md.WroteRows
-
-				logger.Info(
-					"etl.sql",
-					"start_block", startBlock,
-					"end_block", endBlock,
-					"duration", time.Since(t0),
-				)
-
-				logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "etl.sql", md)
+			if err != nil {
+				return fmt.Errorf("failed to execute setup.sql template: %w", err)
 			}
+
+			logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "setup.sql", md)
+
+			sb, md, err := selectSingleRowFromTemplate[startBlockRow](
+				ctx.Context,
+				chconn.Value(),
+				tmpl,
+				"init_start_block.sql",
+				vars,
+			)
+
+			if err != nil {
+				return fmt.Errorf("failed to execute init_start_block.sql template: %w", err)
+			}
+
+			if md.Rows > 0 {
+				startBlock = sb.StartBlock
+			}
+
+			logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_start_block.sql", md)
+
+			var (
+				group, groupctx = errgroup.WithContext(ctx.Context)
+				loadChan        = make(chan *batch, loadChanSize)
+			)
+
+			group.Go(func() error {
+				return transformLoop(
+					groupctx,
+					pool,
+					tmpl,
+					maps.Clone(vars),
+					startBlock,
+					batchSize,
+					loadChan,
+				)
+			})
+
+			group.Go(func() error {
+				return loadLoop(
+					groupctx,
+					tmpl,
+					loadChan,
+				)
+
+			})
+
+			return group.Wait()
 		},
 	}
 }
 
-func logQueryMetadata(ctx context.Context, logger *slog.Logger, level slog.Level, msg string, md *QueryMetadata) {
-	if logger.Enabled(ctx, level) {
-		logger.Log(
-			ctx,
-			level,
-			msg,
-			"rows", md.Rows,
-			"bytes", md.Bytes,
-			"total_rows", md.TotalRows,
-			"wrote_rows", md.WroteRows,
-			"wrote_bytes", md.WroteBytes,
-			"elapsed", md.Elapsed,
+type batch struct {
+	Conn       *puddle.Resource[driver.Conn]
+	StartBlock uint64
+	EndBlock   uint64
+	Vars       map[string]interface{}
+}
+
+func transformLoop(
+	ctx context.Context,
+	pool *puddle.Pool[driver.Conn],
+	tmpl *template.Template,
+	vars map[string]interface{},
+	startBlock uint64,
+	batchSize int,
+	outchan chan<- *batch,
+) error {
+	var logger = slogctx.FromCtx(ctx)
+
+	for {
+		var (
+			t0       = time.Now()
+			endBlock uint64
 		)
+
+		chconn, err := pool.Acquire(ctx)
+
+		if err != nil {
+			return err
+		}
+
+		meb, md, err := selectSingleRowFromTemplate[maxEndBlockRow](
+			ctx,
+			chconn.Value(),
+			tmpl,
+			"batch_max_end_block.sql",
+			vars,
+		)
+
+		if err != nil {
+			chconn.Release()
+			return fmt.Errorf("failed to execute batch_max_end_block.sql template: %w", err)
+		}
+
+		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_max_end_block.sql", md)
+
+		endBlock = min(startBlock+uint64(batchSize)-1, meb.MaxEndBlock)
+
+		var runVars = maps.Clone(vars)
+		runVars["START_BLOCK"] = startBlock
+		runVars["END_BLOCK"] = endBlock
+
+		md, err = execFromTemplate(
+			ctx,
+			chconn.Value(),
+			tmpl,
+			"batch_transform.sql",
+			runVars,
+		)
+
+		if err != nil {
+			chconn.Release()
+			return fmt.Errorf("failed to execute batch_transform.sql template: %w", err)
+		}
+
+		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_transform.sql", md)
+
+		logger.Info(
+			"batch_transform.sql",
+			"start_block", startBlock,
+			"end_block", endBlock,
+			"duration", time.Since(t0),
+		)
+
+		var batch = batch{
+			Conn:       chconn,
+			StartBlock: startBlock,
+			EndBlock:   endBlock,
+			Vars:       runVars,
+		}
+
+		sb, md, err := selectSingleRowFromTemplate[startBlockRow](
+			ctx,
+			chconn.Value(),
+			tmpl,
+			"batch_next_start_block.sql",
+			runVars,
+		)
+
+		if err != nil {
+			chconn.Release()
+			return fmt.Errorf("failed to execute batch_next_start_block.sql template: %w", err)
+		}
+
+		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_next_start_block.sql", md)
+
+		if md.WroteRows > 0 {
+			startBlock = sb.StartBlock
+		} else {
+			startBlock = endBlock + 1
+		}
+
+		endBlock = 0
+
+		select {
+		case <-ctx.Done():
+			chconn.Release()
+			return nil
+		case outchan <- &batch:
+		}
 	}
 }
 
-type startBlockRow struct {
-	StartBlock uint64 `ch:"start_block"`
-}
-
-type maxEndBlockRow struct {
-	MaxEndBlock uint64 `ch:"max_end_block"`
-}
-
-func renderTemplate(tmpl *template.Template, name string, vars map[string]interface{}) (string, error) {
-	var buf bytes.Buffer
-
-	if err := tmpl.ExecuteTemplate(&buf, name, vars); err != nil {
-		return "", err
-	}
-
-	return buf.String(), nil
-}
-
-func selectSingleRowFromTemplate[T any](
+func loadLoop(
 	ctx context.Context,
-	conn driver.Conn,
 	tmpl *template.Template,
-	name string,
-	vars map[string]interface{},
-) (T, *QueryMetadata, error) {
-	var (
-		zero T
-		md   QueryMetadata
-		res  []T
+	inchan <-chan *batch,
+) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case b, open := <-inchan:
+			if !open {
+				return nil
+			}
+
+			if err := load(ctx, tmpl, b); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func load(
+	ctx context.Context,
+	tmpl *template.Template,
+	b *batch,
+) error {
+	var logger = slogctx.FromCtx(ctx)
+	defer b.Conn.Release()
+
+	var t0 = time.Now()
+
+	md, err := execFromTemplate(
+		ctx,
+		b.Conn.Value(),
+		tmpl,
+		"batch_load.sql",
+		b.Vars,
 	)
 
-	q, err := renderTemplate(tmpl, name, vars)
-
 	if err != nil {
-		return zero, nil, fmt.Errorf("failed to render %s template: %w", name, err)
+		return fmt.Errorf("failed to execute batch_load.sql template: %w", err)
 	}
 
-	if err := conn.Select(
-		clickhouse.Context(
-			ctx,
-			clickhouse.WithProgress(md.progressHandler),
-			clickhouse.WithLogs(md.logHandler),
-		),
-		&res,
-		q,
-	); err != nil {
-		return zero, nil, err
-	}
+	logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_load.sql", md)
 
-	if len(res) != 1 {
-		return zero, nil, fmt.Errorf("query returned %d rows instead of 1", len(res))
-	}
-
-	return res[0], &md, nil
-}
-
-func execFromTemplate(
-	ctx context.Context,
-	conn driver.Conn,
-	tmpl *template.Template,
-	name string,
-	vars map[string]interface{},
-) (*QueryMetadata, error) {
-	var md QueryMetadata
-
-	q, err := renderTemplate(tmpl, name, vars)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to render %s template: %w", name, err)
-	}
-
-	return &md, conn.Exec(
-		clickhouse.Context(
-			ctx,
-			clickhouse.WithProgress(md.progressHandler),
-			clickhouse.WithLogs(md.logHandler),
-		),
-		q,
+	logger.Info(
+		"batch_load.sql",
+		"start_block", b.StartBlock,
+		"end_block", b.EndBlock,
+		"duration", time.Since(t0),
 	)
-}
 
-type QueryMetadata struct {
-	Rows       uint64
-	Bytes      uint64
-	TotalRows  uint64
-	WroteRows  uint64
-	WroteBytes uint64
-	Elapsed    time.Duration
-	Logs       []*clickhouse.Log
-}
+	_, err = execFromTemplate(
+		ctx,
+		b.Conn.Value(),
+		tmpl,
+		"batch_cleanup.sql",
+		b.Vars,
+	)
 
-func (md *QueryMetadata) progressHandler(p *clickhouse.Progress) {
-	if p == nil {
-		return
+	if err != nil {
+		return fmt.Errorf("failed to execute batch_cleanup.sql template: %w", err)
 	}
 
-	md.Rows += p.Rows
-	md.Bytes += p.Bytes
-	md.TotalRows += p.TotalRows
-	md.WroteRows += p.WroteRows
-	md.WroteBytes += p.WroteBytes
-	md.Elapsed += p.Elapsed
-}
-
-func (md *QueryMetadata) logHandler(log *clickhouse.Log) {
-	md.Logs = append(md.Logs, log)
+	return nil
 }

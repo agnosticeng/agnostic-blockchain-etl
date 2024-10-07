@@ -1,4 +1,4 @@
-insert into table ethereum_logs select * from (
+create temporary table ethereum_logs_{{.START_BLOCK}}_{{.END_BLOCK}} as select * from (
     with
         block_numbers as (
             select 
