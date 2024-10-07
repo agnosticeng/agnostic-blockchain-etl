@@ -31,9 +31,11 @@ attach table if not exists ethereum_blocks uuid 'f14cca3f-75df-4088-b023-46f5f63
 engine = ReplacingMergeTree
 partition by toYYYYMM(timestamp)
 order by (number)
-settings disk = disk(
-    type=s3,
-    endpoint='{{.S3_ENDPOINT}}',
-    use_environment_credentials=1,
-    metadata_type=plain_rewritable
-)
+settings 
+    disk = disk(
+        type=s3,
+        endpoint='{{.S3_ENDPOINT}}',
+        use_environment_credentials=1,
+        metadata_type=plain_rewritable
+    ),
+    min_bytes_for_wide_part=536870912

@@ -22,9 +22,11 @@ attach table if not exists ethereum_logs uuid '61248174-7a4c-4abf-9974-a6b745d93
 engine = ReplacingMergeTree
 partition by toYYYYMM(timestamp)
 order by (block_number, log_index)
-settings disk = disk(
-    type=s3,
-    endpoint='{{.S3_ENDPOINT}}',
-    use_environment_credentials=1,
-    metadata_type=plain_rewritable
-)
+settings 
+    disk = disk(
+        type=s3,
+        endpoint='{{.S3_ENDPOINT}}',
+        use_environment_credentials=1,
+        metadata_type=plain_rewritable
+    ),
+    min_bytes_for_wide_part=536870912
