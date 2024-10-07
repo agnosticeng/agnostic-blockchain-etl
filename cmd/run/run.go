@@ -20,7 +20,7 @@ import (
 var Flags = []cli.Flag{
 	&cli.StringFlag{Name: "dsn", Value: "clickhouse://localhost:9000/default"},
 	&cli.IntFlag{Name: "batch-size", Value: 10000},
-	&cli.IntFlag{Name: "finalize-chan-size", Value: 1},
+	&cli.IntFlag{Name: "load-chan-size", Value: 1},
 	&cli.Uint64Flag{Name: "start-block", Value: 0},
 	&cli.StringSliceFlag{Name: "var"},
 }
