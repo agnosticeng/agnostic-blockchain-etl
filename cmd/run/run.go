@@ -22,6 +22,7 @@ var Flags = []cli.Flag{
 	&cli.IntFlag{Name: "batch-size", Value: 10000},
 	&cli.IntFlag{Name: "load-chan-size", Value: 1},
 	&cli.Uint64Flag{Name: "start-block", Value: 0},
+	&cli.DurationFlag{Name: "max-connection-lifetime", Value: time.Hour},
 	&cli.StringSliceFlag{Name: "var"},
 }
 
@@ -31,13 +32,14 @@ func Command() *cli.Command {
 		Flags: Flags,
 		Action: func(ctx *cli.Context) error {
 			var (
-				logger       = slogctx.FromCtx(ctx.Context)
-				path         = ctx.Args().Get(0)
-				dsn          = ctx.String("dsn")
-				batchSize    = ctx.Int("batch-size")
-				loadChanSize = ctx.Int("load-chan-size")
-				startBlock   = ctx.Uint64("start-block")
-				vars         = parseFlagVars(ctx.StringSlice("var"))
+				logger          = slogctx.FromCtx(ctx.Context)
+				path            = ctx.Args().Get(0)
+				dsn             = ctx.String("dsn")
+				batchSize       = ctx.Int("batch-size")
+				loadChanSize    = ctx.Int("load-chan-size")
+				startBlock      = ctx.Uint64("start-block")
+				maxConnLifetime = ctx.Duration("max-connection-lifetime")
+				vars            = parseFlagVars(ctx.StringSlice("var"))
 			)
 
 			if len(path) == 0 {
@@ -82,6 +84,7 @@ func Command() *cli.Command {
 				}
 
 				chopts.MaxOpenConns = 1
+				chopts.ConnMaxLifetime = maxConnLifetime * 2
 				chconn, err := clickhouse.Open(chopts)
 
 				if err != nil {
@@ -156,6 +159,7 @@ func Command() *cli.Command {
 					maps.Clone(vars),
 					startBlock,
 					batchSize,
+					maxConnLifetime,
 					loadChan,
 				)
 			})
@@ -188,6 +192,7 @@ func transformLoop(
 	vars map[string]interface{},
 	startBlock uint64,
 	batchSize int,
+	maxConnLifetime time.Duration,
 	outchan chan<- *batch,
 ) error {
 	var logger = slogctx.FromCtx(ctx)
@@ -196,12 +201,22 @@ func transformLoop(
 		var (
 			t0       = time.Now()
 			endBlock uint64
+			chconn   *puddle.Resource[driver.Conn]
+			err      error
 		)
 
-		chconn, err := pool.Acquire(ctx)
+		for {
+			chconn, err = pool.Acquire(ctx)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+
+			if time.Since(chconn.CreationTime()) < maxConnLifetime {
+				break
+			}
+
+			chconn.Destroy()
 		}
 
 		meb, md, err := selectSingleRowFromTemplate[maxEndBlockRow](
