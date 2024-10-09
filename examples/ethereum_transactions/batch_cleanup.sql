@@ -1,0 +1,1 @@
+drop temporary table ethereum_transactions_{{.START_BLOCK}}_{{.END_BLOCK}}

@@ -3,14 +3,17 @@ package run
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"maps"
 	"os"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/agnosticeng/agnostic-blockchain-etl/examples"
 	"github.com/jackc/puddle/v2"
 	"github.com/urfave/cli/v2"
 	slogctx "github.com/veqryn/slog-context"
@@ -54,17 +57,29 @@ func Command() *cli.Command {
 				loadChanSize = 1
 			}
 
-			stat, err := os.Stat(path)
+			var _fs fs.FS
 
-			if err != nil {
-				return err
+			if strings.HasPrefix(path, "examples://") {
+				_sub, err := fs.Sub(examples.FS, strings.TrimPrefix(path, "examples://"))
+
+				if err != nil {
+					return err
+				}
+
+				_fs = _sub
+			} else {
+				stat, err := os.Stat(path)
+
+				if err != nil {
+					return err
+				}
+
+				if !stat.IsDir() {
+					return fmt.Errorf("path must point to a directory of SQL template files")
+				}
+
+				_fs = os.DirFS(path)
 			}
-
-			if !stat.IsDir() {
-				return fmt.Errorf("path must point to a directory of SQL template files")
-			}
-
-			var _fs = os.DirFS(path)
 
 			tmpl, err := template.ParseFS(_fs, "*.sql")
 
