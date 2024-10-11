@@ -44,6 +44,7 @@ settings
     disk = disk(
         type=s3,
         endpoint='{{.S3_ENDPOINT}}',
+        region='{{.S3_REGION}}',
         use_environment_credentials=1,
         metadata_type=plain_rewritable
     ),
