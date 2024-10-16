@@ -1,3 +1,3 @@
 select 
-    max(number) + 1 as start_block
-from ethereum_blocks_{{.START_BLOCK}}_{{.END_BLOCK}}
+    max(block_number) + 1 as start_block
+from ethereum_blocks_extracted_{{.START_BLOCK}}_{{.END_BLOCK}} 

@@ -1,7 +1,7 @@
 create temporary table ethereum_transactions_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
 as select * from (
     with 
-        t0 as (
+        q0 as (
             select 
                 JSONExtract(block, 'JSON') as block,
                 JSONExtract(receipts, 'Array(JSON)') as receipts
@@ -41,7 +41,7 @@ as select * from (
         evm_hex_decode_int(receipt.gasUsed::String, 'UInt64') as gas_used,
         evm_hex_decode(receipt.root::String) as root,
         evm_hex_decode_int(receipt.status::String, 'UInt8') as status
-    from t0
+    from q0
     array join block.transactions[] as tx, receipts as receipt
 )
 settings max_execution_time = 300

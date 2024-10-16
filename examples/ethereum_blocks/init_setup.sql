@@ -37,6 +37,7 @@ settings
         endpoint='{{.S3_ENDPOINT}}',
         region='{{.S3_REGION}}',
         use_environment_credentials=1,
-        metadata_type=plain_rewritable
+        metadata_type=plain_rewritable,
+        readonly=false
     ),
     min_bytes_for_wide_part=536870912
