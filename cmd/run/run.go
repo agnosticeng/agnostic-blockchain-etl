@@ -22,6 +22,7 @@ var Flags = []cli.Flag{
 	&cli.IntFlag{Name: "transform-chan-size", Value: 1},
 	&cli.IntFlag{Name: "load-chan-size", Value: 1},
 	&cli.Uint64Flag{Name: "start-block", Value: 0},
+	&cli.DurationFlag{Name: "wait-on-tip", Value: time.Second * 5},
 	&cli.DurationFlag{Name: "max-connection-lifetime", Value: time.Hour},
 	&cli.StringSliceFlag{Name: "var"},
 }
@@ -39,6 +40,7 @@ func Command() *cli.Command {
 				transformChanSize = ctx.Int("transform-chan-size")
 				loadChanSize      = ctx.Int("load-chan-size")
 				startBlock        = ctx.Uint64("start-block")
+				waitOnTip         = ctx.Duration("wait-on-tip")
 				maxConnLifetime   = ctx.Duration("max-connection-lifetime")
 				vars              = parseFlagVars(ctx.StringSlice("var"))
 			)
@@ -57,6 +59,10 @@ func Command() *cli.Command {
 
 			if loadChanSize <= 0 {
 				loadChanSize = 1
+			}
+
+			if waitOnTip == 0 {
+				waitOnTip = 5 * time.Second
 			}
 
 			var _fs fs.FS
@@ -148,6 +154,7 @@ func Command() *cli.Command {
 					maps.Clone(vars),
 					startBlock,
 					batchSize,
+					waitOnTip,
 					transformChan,
 				)
 			})

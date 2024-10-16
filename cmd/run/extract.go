@@ -18,6 +18,7 @@ func extractLoop(
 	vars map[string]interface{},
 	startBlock uint64,
 	batchSize int,
+	waitOnTip time.Duration,
 	outchan chan<- *batch,
 ) error {
 	defer close(outchan)
@@ -50,6 +51,15 @@ func extractLoop(
 		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_max_end_block.sql", md)
 
 		endBlock = min(startBlock+uint64(batchSize)-1, meb.MaxEndBlock)
+
+		if startBlock > endBlock {
+			select {
+			case <-time.After(waitOnTip):
+				continue
+			case <-ctx.Done():
+				return nil
+			}
+		}
 
 		var runVars = maps.Clone(vars)
 		runVars["START_BLOCK"] = startBlock

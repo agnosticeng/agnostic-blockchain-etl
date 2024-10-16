@@ -3,7 +3,7 @@ as select * from (
         with
             q0 as (
                 select 
-                    JSONExtract(block, 'JSON') as block,
+                    JSONExtract(block, 'JSON') as block
                 from ethereum_blocks_extracted_{{.START_BLOCK}}_{{.END_BLOCK}}
             )
 

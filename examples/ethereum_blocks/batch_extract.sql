@@ -12,6 +12,7 @@ as select * from (
 
 
     select
+        n as block_number,
         ethereum_rpc(
             'eth_getBlockByNumber', 
             [evm_hex_encode_int(n), 'false'], 
