@@ -1,2 +1,2 @@
-insert into ethereum_logs 
-select * from ethereum_logs_transformed_{{.START_BLOCK}}_{{.END_BLOCK}}
+insert into {{.CHAIN}}_logs 
+select * from {{.CHAIN}}_logs_transformed_{{.START_BLOCK}}_{{.END_BLOCK}}

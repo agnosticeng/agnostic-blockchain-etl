@@ -1,4 +1,4 @@
-attach table if not exists ethereum_transactions uuid '3d3e7c5c-7d34-4cba-bef9-1cf2e5a45a2e' (
+attach table if not exists {{.CHAIN}}_transactions uuid '{{.TABLE_UUID}}' (
     timestamp DateTime64(3, 'UTC') CODEC(ZSTD),
     access_list Array(
         Tuple(

@@ -1,4 +1,4 @@
-create temporary table ethereum_logs_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_logs_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
 as select * from (
     with
         q0 as (

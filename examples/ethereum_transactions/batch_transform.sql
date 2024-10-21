@@ -1,11 +1,11 @@
-create temporary table ethereum_transactions_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_transactions_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
 as select * from (
     with 
         q0 as (
             select 
                 JSONExtract(block, 'JSON') as block,
                 JSONExtract(receipts, 'Array(JSON)') as receipts
-            from ethereum_transactions_extracted_{{.START_BLOCK}}_{{.END_BLOCK}}
+            from {{.CHAIN}}_transactions_extracted_{{.START_BLOCK}}_{{.END_BLOCK}}
         )
 
     select 

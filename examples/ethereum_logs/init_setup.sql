@@ -1,4 +1,4 @@
-attach table if not exists ethereum_logs uuid '61248174-7a4c-4abf-9974-a6b745d93ce8' (
+attach table if not exists {{.CHAIN}}_logs uuid '{{.TABLE_UUID}}' (
     timestamp DateTime64(3, 'UTC') CODEC(ZSTD),
     block_hash FixedString(32) CODEC(ZSTD),
     block_number UInt64 CODEC(ZSTD),

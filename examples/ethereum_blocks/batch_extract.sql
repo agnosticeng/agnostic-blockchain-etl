@@ -1,4 +1,4 @@
-create temporary table ethereum_blocks_extracted_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_blocks_extracted_{{.START_BLOCK}}_{{.END_BLOCK}} 
 as select * from (
     with
         block_numbers as (
@@ -16,7 +16,7 @@ as select * from (
         ethereum_rpc(
             'eth_getBlockByNumber', 
             [evm_hex_encode_int(n), 'false'], 
-            ''
+            '{{.RPC_ENDPOINT}}'
         ) as block
     from block_numbers
 )

@@ -1,4 +1,4 @@
-attach table if not exists ethereum_blocks uuid 'f14cca3f-75df-4088-b023-46f5f63c9680' (
+attach table if not exists {{.CHAIN}}_blocks uuid '{{.TABLE_UUID}}' (
     timestamp DateTime64(3, 'UTC') CODEC(ZSTD),
     base_fee_per_gas UInt256 CODEC(ZSTD),
     blob_gas_used UInt64 CODEC(ZSTD),

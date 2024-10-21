@@ -1,4 +1,4 @@
-create temporary table ethereum_transactions_extracted_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_transactions_extracted_{{.START_BLOCK}}_{{.END_BLOCK}} 
 as select * from (
     with
         block_numbers as (
@@ -15,12 +15,12 @@ as select * from (
         ethereum_rpc(
             'eth_getBlockByNumber', 
             [evm_hex_encode_int(n), 'true'], 
-            ''
+            '{{.RPC_ENDPOINT}}'
         ) as block,
         ethereum_rpc(
             'eth_getBlockReceipts', 
             [evm_hex_encode_int(n)], 
-            ''
+            '{{.RPC_ENDPOINT}}'
         ) as receipts
     from block_numbers
 )
