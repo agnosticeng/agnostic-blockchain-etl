@@ -162,7 +162,6 @@ func Command() *cli.Command {
 			group.Go(func() error {
 				return transformLoop(
 					groupctx,
-					pool,
 					tmpl,
 					transformChan,
 					loadChan,

@@ -12,7 +12,6 @@ import (
 
 func transformLoop(
 	ctx context.Context,
-	pool *ConnPool,
 	tmpl *template.Template,
 	inchan <-chan *batch,
 	outchan chan<- *batch,
