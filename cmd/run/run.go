@@ -67,7 +67,7 @@ func Command() *cli.Command {
 
 			var _fs fs.FS
 
-			if strings.HasPrefix(path, "examples://") {
+			if strings.HasPrefix(path, "examples") {
 				_sub, err := fs.Sub(examples.FS, strings.TrimPrefix(path, "examples://"))
 
 				if err != nil {
