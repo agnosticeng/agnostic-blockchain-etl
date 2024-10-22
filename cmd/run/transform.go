@@ -7,6 +7,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -30,7 +31,7 @@ func transformLoop(
 				return nil
 			}
 
-			md, err := execFromTemplate(
+			md, err := ch.ExecFromTemplate(
 				ctx,
 				b.Conn,
 				tmpl,
@@ -42,7 +43,7 @@ func transformLoop(
 				return fmt.Errorf("failed to execute batch_transform.sql template: %w", err)
 			}
 
-			logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_transform.sql", md)
+			ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_transform.sql", md)
 
 			logger.Info(
 				"batch_transform.sql",

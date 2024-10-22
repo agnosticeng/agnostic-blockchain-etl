@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/render"
 	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/run"
 	"github.com/agnosticeng/panicsafe"
 	"github.com/agnosticeng/slogcli"
@@ -18,6 +19,7 @@ func main() {
 		Before: slogcli.SlogBefore,
 		Commands: []*cli.Command{
 			run.Command(),
+			render.Command(),
 		},
 	}
 

@@ -7,6 +7,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -28,7 +29,7 @@ func loadLoop(
 
 			var t0 = time.Now()
 
-			md, err := execFromTemplate(
+			md, err := ch.ExecFromTemplate(
 				ctx,
 				b.Conn,
 				tmpl,
@@ -40,7 +41,7 @@ func loadLoop(
 				return fmt.Errorf("failed to execute batch_load.sql template: %w", err)
 			}
 
-			logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_load.sql", md)
+			ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_load.sql", md)
 
 			logger.Info(
 				"batch_load.sql",
@@ -49,7 +50,7 @@ func loadLoop(
 				"duration", time.Since(t0),
 			)
 
-			_, err = execFromTemplate(
+			_, err = ch.ExecFromTemplate(
 				ctx,
 				b.Conn,
 				tmpl,

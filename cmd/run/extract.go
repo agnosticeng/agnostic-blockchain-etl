@@ -8,6 +8,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -36,7 +37,7 @@ func extractLoop(
 			return err
 		}
 
-		meb, md, err := selectSingleRowFromTemplate[maxEndBlockRow](
+		meb, md, err := ch.SelectSingleRowFromTemplate[maxEndBlockRow](
 			ctx,
 			chconn,
 			tmpl,
@@ -48,7 +49,7 @@ func extractLoop(
 			return fmt.Errorf("failed to execute batch_max_end_block.sql template: %w", err)
 		}
 
-		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_max_end_block.sql", md)
+		ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_max_end_block.sql", md)
 
 		endBlock = min(startBlock+uint64(batchSize)-1, meb.MaxEndBlock)
 
@@ -65,7 +66,7 @@ func extractLoop(
 		runVars["START_BLOCK"] = startBlock
 		runVars["END_BLOCK"] = endBlock
 
-		md, err = execFromTemplate(
+		md, err = ch.ExecFromTemplate(
 			ctx,
 			chconn,
 			tmpl,
@@ -77,7 +78,7 @@ func extractLoop(
 			return fmt.Errorf("failed to execute batch_extract.sql template: %w", err)
 		}
 
-		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_extract.sql", md)
+		ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_extract.sql", md)
 
 		logger.Info(
 			"batch_extract.sql",
@@ -93,7 +94,7 @@ func extractLoop(
 			Vars:       runVars,
 		}
 
-		sb, md, err := selectSingleRowFromTemplate[startBlockRow](
+		sb, md, err := ch.SelectSingleRowFromTemplate[startBlockRow](
 			ctx,
 			chconn,
 			tmpl,
@@ -105,7 +106,7 @@ func extractLoop(
 			return fmt.Errorf("failed to execute batch_next_start_block.sql template: %w", err)
 		}
 
-		logQueryMetadata(ctx, logger, slog.LevelDebug, "batch_next_start_block.sql", md)
+		ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_next_start_block.sql", md)
 
 		if md.WroteRows > 0 {
 			startBlock = sb.StartBlock

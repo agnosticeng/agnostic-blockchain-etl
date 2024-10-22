@@ -1,4 +1,4 @@
-package run
+package ch
 
 import (
 	"context"
@@ -35,7 +35,7 @@ func (md *QueryMetadata) logHandler(log *clickhouse.Log) {
 	md.Logs = append(md.Logs, log)
 }
 
-func logQueryMetadata(ctx context.Context, logger *slog.Logger, level slog.Level, msg string, md *QueryMetadata) {
+func LogQueryMetadata(ctx context.Context, logger *slog.Logger, level slog.Level, msg string, md *QueryMetadata) {
 	if logger.Enabled(ctx, level) {
 		logger.Log(
 			ctx,

@@ -41,6 +41,24 @@ as select * from (
         evm_hex_decode_int(receipt.gasUsed::String, 'UInt64') as gas_used,
         evm_hex_decode(receipt.root::String) as root,
         evm_hex_decode_int(receipt.status::String, 'UInt8') as status
+
+        {{ if .ENABLE_DENCUN }},
+        max_fee_per_blob_gas UInt256 CODEC(ZSTD),
+        blob_versioned_hashes Array(FixedString(32)) CODEC(ZSTD),
+        blob_gas_used UInt64 CODEC(ZSTD),
+        blob_gas_price UInt256 CODEC(ZSTD)
+        {{ end }}
+
+        {{ if .ENABLE_OP_STACK }},
+        source_hash FixedString(32) CODEC(ZSTD),
+        mint UInt256 CODEC(ZSTD),
+        is_system_tx Bool CODEC(ZSTD),
+        is_creation Bool CODEC(ZSTD),
+        deposit_nonce UInt256 CODEC(ZSTD) -- from receipt
+        deposit_receipt_version UInt64 CODEC(ZSTD) -- from receipt
+        data String CODEC(ZSTD)
+        {{ end }}
+
     from q0
     array join block.transactions[] as tx, receipts as receipt
 )

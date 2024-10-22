@@ -32,6 +32,23 @@ attach table if not exists {{.CHAIN}}_transactions uuid '{{.TABLE_UUID}}' (
     root FixedString(32) CODEC(ZSTD),
     status UInt8 CODEC(ZSTD),
 
+    {{ if .ENABLE_DENCUN }}
+    max_fee_per_blob_gas UInt256 CODEC(ZSTD),
+    blob_versioned_hashes Array(FixedString(32)) CODEC(ZSTD),
+    blob_gas_used UInt64 CODEC(ZSTD),
+    blob_gas_price UInt256 CODEC(ZSTD),
+    {{ end }}
+    
+    {{ if .ENABLE_OP_STACK }}
+    source_hash FixedString(32) CODEC(ZSTD),
+    mint UInt256 CODEC(ZSTD),
+    is_system_tx Bool CODEC(ZSTD),
+    is_creation Bool CODEC(ZSTD),
+    deposit_nonce UInt256 CODEC(ZSTD), -- from receipt
+    deposit_receipt_version UInt64 CODEC(ZSTD), -- from receipt
+    data String CODEC(ZSTD),
+    {{ end }}
+
     index idx_timestamp timestamp type minmax granularity 1,
     index idx_block_hash block_hash type bloom_filter granularity 4,
     index idx_from from type bloom_filter granularity 4,

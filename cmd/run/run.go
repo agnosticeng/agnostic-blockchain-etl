@@ -2,15 +2,12 @@ package run
 
 import (
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"maps"
-	"os"
-	"strings"
-	"text/template"
 	"time"
 
-	"github.com/agnosticeng/agnostic-blockchain-etl/examples"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	"github.com/urfave/cli/v2"
 	slogctx "github.com/veqryn/slog-context"
 	"golang.org/x/sync/errgroup"
@@ -42,7 +39,7 @@ func Command() *cli.Command {
 				startBlock        = ctx.Uint64("start-block")
 				waitOnTip         = ctx.Duration("wait-on-tip")
 				maxConnLifetime   = ctx.Duration("max-connection-lifetime")
-				vars              = parseFlagVars(ctx.StringSlice("var"))
+				vars              = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
 			)
 
 			if len(path) == 0 {
@@ -65,31 +62,7 @@ func Command() *cli.Command {
 				waitOnTip = 5 * time.Second
 			}
 
-			var _fs fs.FS
-
-			if strings.HasPrefix(path, "examples") {
-				_sub, err := fs.Sub(examples.FS, strings.TrimPrefix(path, "examples://"))
-
-				if err != nil {
-					return err
-				}
-
-				_fs = _sub
-			} else {
-				stat, err := os.Stat(path)
-
-				if err != nil {
-					return err
-				}
-
-				if !stat.IsDir() {
-					return fmt.Errorf("path must point to a directory of SQL template files")
-				}
-
-				_fs = os.DirFS(path)
-			}
-
-			tmpl, err := template.ParseFS(_fs, "*.sql")
+			tmpl, err := utils.BuildTemplate(path)
 
 			if err != nil {
 				return err
@@ -108,7 +81,7 @@ func Command() *cli.Command {
 				return err
 			}
 
-			md, err := execFromTemplate(
+			md, err := ch.ExecFromTemplate(
 				ctx.Context,
 				chconn,
 				tmpl,
@@ -120,9 +93,9 @@ func Command() *cli.Command {
 				return fmt.Errorf("failed to execute init_setup.sql template: %w", err)
 			}
 
-			logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_setup.sql", md)
+			ch.LogQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_setup.sql", md)
 
-			sb, md, err := selectSingleRowFromTemplate[startBlockRow](
+			sb, md, err := ch.SelectSingleRowFromTemplate[startBlockRow](
 				ctx.Context,
 				chconn,
 				tmpl,
@@ -138,7 +111,7 @@ func Command() *cli.Command {
 				startBlock = sb.StartBlock
 			}
 
-			logQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_start_block.sql", md)
+			ch.LogQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_start_block.sql", md)
 
 			var (
 				group, groupctx = errgroup.WithContext(ctx.Context)
