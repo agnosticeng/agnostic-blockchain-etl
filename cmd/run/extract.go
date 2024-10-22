@@ -20,12 +20,20 @@ func extractLoop(
 	startBlock uint64,
 	batchSize int,
 	waitOnTip time.Duration,
+	stopAfter int,
 	outchan chan<- *batch,
 ) error {
 	defer close(outchan)
-	var logger = slogctx.FromCtx(ctx)
+	var (
+		logger     = slogctx.FromCtx(ctx)
+		iterations int
+	)
 
 	for {
+		if iterations == stopAfter {
+			return nil
+		}
+
 		var (
 			t0       = time.Now()
 			endBlock uint64
@@ -120,6 +128,7 @@ func extractLoop(
 		case <-ctx.Done():
 			return nil
 		case outchan <- &b:
+			iterations++
 		}
 	}
 }

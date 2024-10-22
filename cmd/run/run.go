@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"math"
 	"time"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
@@ -21,6 +22,7 @@ var Flags = []cli.Flag{
 	&cli.Uint64Flag{Name: "start-block", Value: 0},
 	&cli.DurationFlag{Name: "wait-on-tip", Value: time.Second * 5},
 	&cli.DurationFlag{Name: "max-connection-lifetime", Value: time.Hour},
+	&cli.IntFlag{Name: "stop-after", Value: math.MaxInt},
 	&cli.StringSliceFlag{Name: "var"},
 }
 
@@ -39,6 +41,7 @@ func Command() *cli.Command {
 				startBlock        = ctx.Uint64("start-block")
 				waitOnTip         = ctx.Duration("wait-on-tip")
 				maxConnLifetime   = ctx.Duration("max-connection-lifetime")
+				stopAfter         = ctx.Int("stop-after")
 				vars              = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
 			)
 
@@ -128,6 +131,7 @@ func Command() *cli.Command {
 					startBlock,
 					batchSize,
 					waitOnTip,
+					stopAfter,
 					transformChan,
 				)
 			})
