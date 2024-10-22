@@ -43,10 +43,15 @@ attach table if not exists {{.CHAIN}}_transactions uuid '{{.TABLE_UUID}}' (
     source_hash FixedString(32) CODEC(ZSTD),
     mint UInt256 CODEC(ZSTD),
     is_system_tx Bool CODEC(ZSTD),
-    is_creation Bool CODEC(ZSTD),
-    deposit_nonce UInt256 CODEC(ZSTD), -- from receipt
-    deposit_receipt_version UInt64 CODEC(ZSTD), -- from receipt
-    data String CODEC(ZSTD),
+    deposit_nonce UInt256 CODEC(ZSTD),
+    deposit_receipt_version UInt64 CODEC(ZSTD),
+    l1_gas_price UInt256 CODEC(ZSTD),
+    l1_gas_used UInt64 CODEC(ZSTD),
+    l1_fee UInt256 CODEC(ZSTD),
+    l1_fee_scalar UInt64 CODEC(ZSTD),
+    l1_blob_base_fee UInt256 CODEC(ZSTD),
+    l1_base_fee_scalar UInt64 CODEC(ZSTD),
+    l1_blob_base_fee_scalar UInt64 CODEC(ZSTD),
     {{ end }}
 
     index idx_timestamp timestamp type minmax granularity 1,

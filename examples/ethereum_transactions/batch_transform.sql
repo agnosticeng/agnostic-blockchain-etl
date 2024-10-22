@@ -43,22 +43,26 @@ as select * from (
         evm_hex_decode_int(receipt.status::String, 'UInt8') as status
 
         {{ if .ENABLE_DENCUN }},
-        max_fee_per_blob_gas UInt256 CODEC(ZSTD),
-        blob_versioned_hashes Array(FixedString(32)) CODEC(ZSTD),
-        blob_gas_used UInt64 CODEC(ZSTD),
-        blob_gas_price UInt256 CODEC(ZSTD)
+        evm_hex_decode_int(tx.maxFeePerBlobGas::String, 'UInt256') as max_fee_per_blob_gas,
+        arrayMap(x -> evm_hex_decode(x), tx.blobVersionedHashes::Array(String)) as blob_versioned_hashes,
+        evm_hex_decode_int(receipt.blobGasUsed::String, 'UInt64') as blob_gas_used,
+        evm_hex_decode_int(receipt.blobGasPrice::String, 'UInt256') as blob_gas_price
         {{ end }}
 
         {{ if .ENABLE_OP_STACK }},
-        source_hash FixedString(32) CODEC(ZSTD),
-        mint UInt256 CODEC(ZSTD),
-        is_system_tx Bool CODEC(ZSTD),
-        is_creation Bool CODEC(ZSTD),
-        deposit_nonce UInt256 CODEC(ZSTD) -- from receipt
-        deposit_receipt_version UInt64 CODEC(ZSTD) -- from receipt
-        data String CODEC(ZSTD)
+        evm_hex_decode(tx.sourceHash::String) as source_hash,
+        evm_hex_decode_int(tx.mint::String, 'UInt256') as mint,
+        toBool(tx.isSystemTx::String) as is_system_tx,
+        evm_hex_decode_int(receipt.depositNonce::String, 'UInt256') as deposit_nonce,
+        evm_hex_decode_int(receipt.depositReceiptVersion::String, 'UInt64') as deposit_receipt_version,
+        evm_hex_decode_int(receipt.l1GasPrice::String, 'UInt256') as l1_gas_price,
+        evm_hex_decode_int(receipt.l1GasUsed::String, 'UInt64') as l1_gas_used,
+        evm_hex_decode_int(receipt.l1Fee::String, 'UInt256') as l1_fee,
+        evm_hex_decode_int(receipt.l1FeeScalar::String, 'UInt64') as l1_fee_scalar,
+        evm_hex_decode_int(receipt.l1BlobBaseFee::String, 'UInt256') as l1_blob_base_fee,
+        evm_hex_decode_int(receipt.l1BaseFeeScalar::String, 'UInt64') as l1_base_fee_scalar,
+        evm_hex_decode_int(receipt.l1BlobBaseFeeScalar::String, 'UInt64') as l1_blob_base_fee_scalar
         {{ end }}
-
     from q0
     array join block.transactions[] as tx, receipts as receipt
 )
