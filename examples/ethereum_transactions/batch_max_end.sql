@@ -6,4 +6,4 @@ select
             'String'
         ), 
         'UInt64'
-    ) as max_end_block
+    ) as max_end
