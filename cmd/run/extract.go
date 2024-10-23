@@ -2,7 +2,6 @@ package run
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"text/template"
 	"time"
@@ -56,8 +55,6 @@ func extractLoop(
 			return err
 		}
 
-		fmt.Println("max_end", meb.MaxEnd, "start", start)
-
 		end = min(start+uint64(batchSize)-1, meb.MaxEnd)
 
 		if start > end {
@@ -68,8 +65,6 @@ func extractLoop(
 				return nil
 			}
 		}
-
-		fmt.Println("start", start, "end", end)
 
 		var runVars = maps.Clone(vars)
 		runVars["START"] = start
