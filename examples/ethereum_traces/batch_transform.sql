@@ -1,4 +1,4 @@
-create temporary table {{.CHAIN}}_traces_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_traces_transformed_{{.START}}_{{.END}} 
 as select * from (
     with
         q0 as (
@@ -6,7 +6,7 @@ as select * from (
                 JSONExtract(block, 'Tuple(timestamp String)') as block,
                 JSONExtract(receipts, 'Array(JSON)') as receipts,
                 JSONExtract(traces, 'Array(JSON)') as traces
-            from {{.CHAIN}}_traces_extracted_{{.START_BLOCK}}_{{.END_BLOCK}}
+            from {{.CHAIN}}_traces_extracted_{{.START}}_{{.END}}
         ),
 
         q1 as (

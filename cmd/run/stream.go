@@ -2,7 +2,6 @@ package run
 
 import (
 	"fmt"
-	"log/slog"
 	"maps"
 	"math"
 	"time"
@@ -10,7 +9,6 @@ import (
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	"github.com/urfave/cli/v2"
-	slogctx "github.com/veqryn/slog-context"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -19,7 +17,7 @@ var Flags = []cli.Flag{
 	&cli.IntFlag{Name: "batch-size", Value: 10000},
 	&cli.IntFlag{Name: "transform-chan-size", Value: 1},
 	&cli.IntFlag{Name: "load-chan-size", Value: 1},
-	&cli.Uint64Flag{Name: "start-block", Value: 0},
+	&cli.Uint64Flag{Name: "start", Value: 0},
 	&cli.DurationFlag{Name: "wait-on-tip", Value: time.Second * 5},
 	&cli.DurationFlag{Name: "max-connection-lifetime", Value: time.Hour},
 	&cli.IntFlag{Name: "stop-after", Value: math.MaxInt},
@@ -32,13 +30,12 @@ func Command() *cli.Command {
 		Flags: Flags,
 		Action: func(ctx *cli.Context) error {
 			var (
-				logger            = slogctx.FromCtx(ctx.Context)
 				path              = ctx.Args().Get(0)
 				dsn               = ctx.String("dsn")
 				batchSize         = ctx.Int("batch-size")
 				transformChanSize = ctx.Int("transform-chan-size")
 				loadChanSize      = ctx.Int("load-chan-size")
-				startBlock        = ctx.Uint64("start-block")
+				start             = ctx.Uint64("start")
 				waitOnTip         = ctx.Duration("wait-on-tip")
 				maxConnLifetime   = ctx.Duration("max-connection-lifetime")
 				stopAfter         = ctx.Int("stop-after")
@@ -84,7 +81,7 @@ func Command() *cli.Command {
 				return err
 			}
 
-			md, err := ch.ExecFromTemplate(
+			_, err = ch.ExecFromTemplate(
 				ctx.Context,
 				chconn,
 				tmpl,
@@ -93,28 +90,24 @@ func Command() *cli.Command {
 			)
 
 			if err != nil {
-				return fmt.Errorf("failed to execute init_setup.sql template: %w", err)
+				return err
 			}
 
-			ch.LogQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_setup.sql", md)
-
-			sb, md, err := ch.SelectSingleRowFromTemplate[startBlockRow](
+			sb, md, err := ch.SelectSingleRowFromTemplate[startRow](
 				ctx.Context,
 				chconn,
 				tmpl,
-				"init_start_block.sql",
+				"init_start.sql",
 				vars,
 			)
 
 			if err != nil {
-				return fmt.Errorf("failed to execute init_start_block.sql template: %w", err)
+				return err
 			}
 
 			if md.Rows > 0 {
-				startBlock = sb.StartBlock
+				start = sb.Start
 			}
-
-			ch.LogQueryMetadata(ctx.Context, logger, slog.LevelDebug, "init_start_block.sql", md)
 
 			var (
 				group, groupctx = errgroup.WithContext(ctx.Context)
@@ -128,7 +121,7 @@ func Command() *cli.Command {
 					pool,
 					tmpl,
 					maps.Clone(vars),
-					startBlock,
+					start,
 					batchSize,
 					waitOnTip,
 					stopAfter,
@@ -157,11 +150,4 @@ func Command() *cli.Command {
 			return group.Wait()
 		},
 	}
-}
-
-type batch struct {
-	Conn       *Conn
-	StartBlock uint64
-	EndBlock   uint64
-	Vars       map[string]interface{}
 }

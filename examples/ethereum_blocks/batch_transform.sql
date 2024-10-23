@@ -1,10 +1,10 @@
-create temporary table {{.CHAIN}}_blocks_transformed_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_blocks_transformed_{{.START}}_{{.END}} 
 as select * from (
         with
             q0 as (
                 select 
                     JSONExtract(block, 'JSON') as block
-                from {{.CHAIN}}_blocks_extracted_{{.START_BLOCK}}_{{.END_BLOCK}}
+                from {{.CHAIN}}_blocks_extracted_{{.START}}_{{.END}}
             )
 
         select 

@@ -3,7 +3,6 @@ package run
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"maps"
 	"text/template"
 	"time"
@@ -17,7 +16,7 @@ func extractLoop(
 	pool *ConnPool,
 	tmpl *template.Template,
 	vars map[string]interface{},
-	startBlock uint64,
+	start uint64,
 	batchSize int,
 	waitOnTip time.Duration,
 	stopAfter int,
@@ -35,8 +34,8 @@ func extractLoop(
 		}
 
 		var (
-			t0       = time.Now()
-			endBlock uint64
+			t0  = time.Now()
+			end uint64
 		)
 
 		chconn, err := pool.Acquire()
@@ -45,23 +44,23 @@ func extractLoop(
 			return err
 		}
 
-		meb, md, err := ch.SelectSingleRowFromTemplate[maxEndBlockRow](
+		meb, _, err := ch.SelectSingleRowFromTemplate[maxEndRow](
 			ctx,
 			chconn,
 			tmpl,
-			"batch_max_end_block.sql",
+			"batch_max_end.sql",
 			vars,
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to execute batch_max_end_block.sql template: %w", err)
+			return err
 		}
 
-		ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_max_end_block.sql", md)
+		fmt.Println("max_end", meb.MaxEnd, "start", start)
 
-		endBlock = min(startBlock+uint64(batchSize)-1, meb.MaxEndBlock)
+		end = min(start+uint64(batchSize)-1, meb.MaxEnd)
 
-		if startBlock > endBlock {
+		if start > end {
 			select {
 			case <-time.After(waitOnTip):
 				continue
@@ -70,11 +69,13 @@ func extractLoop(
 			}
 		}
 
-		var runVars = maps.Clone(vars)
-		runVars["START_BLOCK"] = startBlock
-		runVars["END_BLOCK"] = endBlock
+		fmt.Println("start", start, "end", end)
 
-		md, err = ch.ExecFromTemplate(
+		var runVars = maps.Clone(vars)
+		runVars["START"] = start
+		runVars["END"] = end
+
+		_, err = ch.ExecFromTemplate(
 			ctx,
 			chconn,
 			tmpl,
@@ -83,46 +84,42 @@ func extractLoop(
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to execute batch_extract.sql template: %w", err)
+			return err
 		}
-
-		ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_extract.sql", md)
 
 		logger.Info(
 			"batch_extract.sql",
-			"start_block", startBlock,
-			"end_block", endBlock,
+			"start", start,
+			"end", end,
 			"duration", time.Since(t0),
 		)
 
 		var b = batch{
-			Conn:       chconn,
-			StartBlock: startBlock,
-			EndBlock:   endBlock,
-			Vars:       runVars,
+			Conn:  chconn,
+			Start: start,
+			End:   end,
+			Vars:  runVars,
 		}
 
-		sb, md, err := ch.SelectSingleRowFromTemplate[startBlockRow](
+		sb, md, err := ch.SelectSingleRowFromTemplate[startRow](
 			ctx,
 			chconn,
 			tmpl,
-			"batch_next_start_block.sql",
+			"batch_next_start.sql",
 			runVars,
 		)
 
 		if err != nil {
-			return fmt.Errorf("failed to execute batch_next_start_block.sql template: %w", err)
+			return err
 		}
-
-		ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_next_start_block.sql", md)
 
 		if md.WroteRows > 0 {
-			startBlock = sb.StartBlock
+			start = sb.Start
 		} else {
-			startBlock = endBlock + 1
+			start = end + 1
 		}
 
-		endBlock = 0
+		end = 0
 
 		select {
 		case <-ctx.Done():

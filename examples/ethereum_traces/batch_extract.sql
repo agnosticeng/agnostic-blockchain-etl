@@ -1,12 +1,12 @@
-create temporary table {{.CHAIN}}_traces_extracted_{{.START_BLOCK}}_{{.END_BLOCK}} 
+create temporary table {{.CHAIN}}_traces_extracted_{{.START}}_{{.END}} 
 as select * from (
     with
         block_numbers as (
             select 
                 generate_series as n 
             from generate_series(
-                {{.START_BLOCK}}::UInt64,
-                {{.END_BLOCK}}::UInt64
+                {{.START}}::UInt64,
+                {{.END}}::UInt64
             )
         )
 

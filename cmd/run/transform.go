@@ -2,8 +2,6 @@ package run
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"text/template"
 	"time"
 
@@ -31,7 +29,7 @@ func transformLoop(
 				return nil
 			}
 
-			md, err := ch.ExecFromTemplate(
+			_, err := ch.ExecFromTemplate(
 				ctx,
 				b.Conn,
 				tmpl,
@@ -40,15 +38,13 @@ func transformLoop(
 			)
 
 			if err != nil {
-				return fmt.Errorf("failed to execute batch_transform.sql template: %w", err)
+				return err
 			}
-
-			ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_transform.sql", md)
 
 			logger.Info(
 				"batch_transform.sql",
-				"start_block", b.StartBlock,
-				"end_block", b.EndBlock,
+				"start", b.Start,
+				"end", b.End,
 				"duration", time.Since(t0),
 			)
 

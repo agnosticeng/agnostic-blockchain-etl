@@ -1,9 +1,16 @@
 package run
 
-type startBlockRow struct {
-	StartBlock uint64 `ch:"start_block"`
+type startRow struct {
+	Start uint64 `ch:"start"`
 }
 
-type maxEndBlockRow struct {
-	MaxEndBlock uint64 `ch:"max_end_block"`
+type maxEndRow struct {
+	MaxEnd uint64 `ch:"max_end"`
+}
+
+type batch struct {
+	Conn  *Conn
+	Start uint64
+	End   uint64
+	Vars  map[string]interface{}
 }

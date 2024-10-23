@@ -2,8 +2,6 @@ package run
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"text/template"
 	"time"
 
@@ -29,7 +27,7 @@ func loadLoop(
 
 			var t0 = time.Now()
 
-			md, err := ch.ExecFromTemplate(
+			_, err := ch.ExecFromTemplate(
 				ctx,
 				b.Conn,
 				tmpl,
@@ -38,15 +36,13 @@ func loadLoop(
 			)
 
 			if err != nil {
-				return fmt.Errorf("failed to execute batch_load.sql template: %w", err)
+				return err
 			}
-
-			ch.LogQueryMetadata(ctx, logger, slog.LevelDebug, "batch_load.sql", md)
 
 			logger.Info(
 				"batch_load.sql",
-				"start_block", b.StartBlock,
-				"end_block", b.EndBlock,
+				"start", b.Start,
+				"end", b.End,
 				"duration", time.Since(t0),
 			)
 
@@ -59,7 +55,7 @@ func loadLoop(
 			)
 
 			if err != nil {
-				return fmt.Errorf("failed to execute batch_cleanup.sql template: %w", err)
+				return err
 			}
 
 			b.Conn.Release()
