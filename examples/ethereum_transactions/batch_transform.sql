@@ -52,7 +52,7 @@ as select * from (
         {{ if .ENABLE_OP_STACK }},
         evm_hex_decode(tx.sourceHash::String) as source_hash,
         evm_hex_decode_int(tx.mint::String, 'UInt256') as mint,
-        toBool(tx.isSystemTx::String) as is_system_tx,
+        toBool(if(length(tx.isSystemTx::String) > 0, tx.isSystemTx::String, 'false')) as is_system_tx,
         evm_hex_decode_int(receipt.depositNonce::String, 'UInt256') as deposit_nonce,
         evm_hex_decode_int(receipt.depositReceiptVersion::String, 'UInt64') as deposit_receipt_version,
         evm_hex_decode_int(receipt.l1GasPrice::String, 'UInt256') as l1_gas_price,

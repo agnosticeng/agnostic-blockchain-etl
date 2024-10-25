@@ -68,7 +68,7 @@ func Command() *cli.Command {
 				return err
 			}
 
-			var pool = NewConnPool(ConnPoolConfig{
+			var pool = ch.NewConnPool(ch.ConnPoolConfig{
 				DSN:             dsn,
 				MaxConnLifetime: maxConnLifetime,
 			})

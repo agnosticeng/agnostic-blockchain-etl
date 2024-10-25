@@ -12,7 +12,7 @@ import (
 
 func extractLoop(
 	ctx context.Context,
-	pool *ConnPool,
+	pool *ch.ConnPool,
 	tmpl *template.Template,
 	vars map[string]interface{},
 	start uint64,
