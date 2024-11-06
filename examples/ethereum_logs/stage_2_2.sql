@@ -1,0 +1,1 @@
+drop temporary table {{.CHAIN}}_logs_{{.START}}_{{.END}}

@@ -1,0 +1,1 @@
+drop temporary table {{.CHAIN}}_blocks_{{.START}}_{{.END}}

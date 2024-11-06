@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/pipeline"
 	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/render"
-	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/run"
 	"github.com/agnosticeng/panicsafe"
 	"github.com/agnosticeng/slogcli"
 	"github.com/urfave/cli/v2"
@@ -18,7 +18,7 @@ func main() {
 		Flags:  slogcli.SlogFlags(),
 		Before: slogcli.SlogBefore,
 		Commands: []*cli.Command{
-			run.Command(),
+			pipeline.Command(),
 			render.Command(),
 		},
 	}

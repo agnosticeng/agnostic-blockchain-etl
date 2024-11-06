@@ -10,6 +10,7 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 FROM gcr.io/distroless/base-debian11
 
 COPY --from=build /code/bin/* /
+COPY --from=build /code/examples /examples
 
 ENV CGO_ENABLED=1
 ENTRYPOINT ["/agnostic-blockchain-etl"]

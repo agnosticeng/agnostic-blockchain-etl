@@ -2,6 +2,8 @@ package render
 
 import (
 	"fmt"
+	"os"
+	"text/template"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	"github.com/urfave/cli/v2"
@@ -25,7 +27,17 @@ func Command() *cli.Command {
 				return fmt.Errorf("a path must be specified")
 			}
 
-			tmpl, err := utils.BuildTemplate(path)
+			stat, err := os.Stat(path)
+
+			if err != nil {
+				return err
+			}
+
+			if !stat.IsDir() {
+				return fmt.Errorf("path must point to a directory of SQL template files")
+			}
+
+			tmpl, err := template.ParseFS(os.DirFS(path), "*.sql")
 
 			if err != nil {
 				return err

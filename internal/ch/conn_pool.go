@@ -75,6 +75,9 @@ func (pool *ConnPool) Acquire() (*Conn, error) {
 
 	chopts.MaxOpenConns = 1
 	chopts.ConnMaxLifetime = pool.conf.MaxConnLifetime * 2
+	chopts.Settings = clickhouse.Settings{
+		"default_temporary_table_engine": "Log",
+	}
 	chconn, err := clickhouse.Open(chopts)
 
 	if err != nil {
