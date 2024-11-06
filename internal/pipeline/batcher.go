@@ -36,7 +36,6 @@ func Batcher(
 
 	var (
 		tip        uint64
-		lastEnd    uint64
 		iterations int
 		logger     = slogctx.FromCtx(ctx)
 	)
@@ -58,7 +57,7 @@ func Batcher(
 			}
 
 			for {
-				if lastEnd >= tip {
+				if start > tip {
 					break
 				}
 
