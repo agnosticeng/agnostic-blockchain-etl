@@ -1,4 +1,4 @@
-attach table if not exists {{.CHAIN}}_traces uuid '{{.UUID}}' (
+attach table if not exists {{.CHAIN}}_traces uuid '{{.TABLE_UUID}}' (
     timestamp DateTime64(3, 'UTC') CODEC(ZSTD),
     block_hash FixedString(32) CODEC(ZSTD),
     block_number UInt64 CODEC(ZSTD),
