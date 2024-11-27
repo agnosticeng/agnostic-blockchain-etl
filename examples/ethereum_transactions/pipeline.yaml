@@ -1,4 +1,4 @@
-ClickHouse:
+Clickhouse:
   Settings:
     default_temporary_table_engine: Log
     allow_experimental_dynamic_type: 1

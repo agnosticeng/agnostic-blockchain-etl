@@ -1,13 +1,13 @@
 package pipeline
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 	"text/template"
-	"time"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/pipeline"
@@ -22,7 +22,6 @@ import (
 var Flags = []cli.Flag{
 	&cli.StringFlag{Name: "template-path"},
 	&cli.StringSliceFlag{Name: "var"},
-	&cli.DurationFlag{Name: "max-connection-lifetime", Value: time.Hour},
 }
 
 type config struct {
@@ -49,6 +48,9 @@ func Command() *cli.Command {
 			); err != nil {
 				return err
 			}
+
+			js, _ := json.MarshalIndent(cfg, "", "    ")
+			fmt.Println(string(js))
 
 			if len(templatePath) == 0 {
 				templatePath = filepath.Dir(path)
