@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"log/slog"
 	"text/template"
 	"time"
 
@@ -65,6 +66,7 @@ func TipTracker(
 			case <-ctx.Done():
 				return nil
 			case outchan <- row.Tip:
+				logger.Log(ctx, slog.Level(-10), "new tip", "value", row.Tip)
 			}
 
 			return nil
