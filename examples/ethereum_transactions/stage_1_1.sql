@@ -13,7 +13,12 @@ as (
         rows as (
             select
                 JSONExtract(
-                    ethereum_rpc('eth_getBlockByNumber', [evm_hex_encode_int(n), 'true'], '{{.RPC_ENDPOINT}}'),
+                    ethereum_rpc(
+                        'eth_getBlockByNumber', 
+                        [evm_hex_encode_int(n), 'true'], 
+                        '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                    ),
+                    'value',
                     'Tuple(
                         timestamp String,
                         number String,
@@ -59,7 +64,12 @@ as (
                     )'
                 ) as block,
                 JSONExtract(
-                    ethereum_rpc('eth_getBlockReceipts', [evm_hex_encode_int(n)], '{{.RPC_ENDPOINT}}'),
+                    ethereum_rpc(
+                        'eth_getBlockReceipts', 
+                        [evm_hex_encode_int(n)], 
+                        '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                    ),
+                    'value',
                     'Array(
                         Tuple(  
                             contractAddress String,

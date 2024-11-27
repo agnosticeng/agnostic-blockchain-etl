@@ -23,6 +23,9 @@ func Command() *cli.Command {
 				vars = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
 			)
 
+			fmt.Println(ctx.StringSlice("var"))
+			fmt.Println(vars)
+
 			if len(path) == 0 {
 				return fmt.Errorf("a path must be specified")
 			}

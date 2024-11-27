@@ -1,8 +1,19 @@
+ClickHouse:
+  Settings:
+    default_temporary_table_engine: Log
+    allow_experimental_dynamic_type: 1
+    enable_named_columns_in_function_tuple: 1
+    max_execution_time: 300
+
 Batcher:
   MaxBatchSize: 100
 
 TipTracker:
   PollInterval: 60s
+  
+Init:
+  Setup:
+    - setup.sql
 
 Steps:
   - Stage:

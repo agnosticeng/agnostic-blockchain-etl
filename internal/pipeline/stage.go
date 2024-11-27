@@ -5,12 +5,14 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	slogctx "github.com/veqryn/slog-context"
 )
 
 type StageConfig struct {
-	Files []string
+	Files              []string
+	ClickhouseSettings map[string]any
 }
 
 func (conf StageConfig) WithDefaults() StageConfig {
@@ -28,6 +30,10 @@ func Stage(
 
 	logger.Debug("started")
 	defer logger.Debug("stopped")
+
+	if len(conf.ClickhouseSettings) > 0 {
+		ctx = clickhouse.Context(ctx, clickhouse.WithSettings(conf.ClickhouseSettings))
+	}
 
 	for {
 		select {

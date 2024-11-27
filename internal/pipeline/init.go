@@ -8,16 +8,12 @@ import (
 )
 
 type InitConfig struct {
-	Setup        string
+	Setup        []string
 	Start        string
 	DefaultStart uint64
 }
 
 func (conf InitConfig) WithDefaults() InitConfig {
-	if len(conf.Setup) == 0 {
-		conf.Setup = "setup.sql"
-	}
-
 	if len(conf.Start) == 0 {
 		conf.Start = "start.sql"
 	}
@@ -42,10 +38,12 @@ func Init(
 
 	defer chconn.Release()
 
-	_, err = ch.ExecFromTemplate(ctx, chconn, tmpl, conf.Setup, vars)
+	for _, file := range conf.Setup {
+		_, err = ch.ExecFromTemplate(ctx, chconn, tmpl, file, vars)
 
-	if err != nil {
-		return start, err
+		if err != nil {
+			return start, err
+		}
 	}
 
 	sb, md, err := ch.SelectSingleRowFromTemplate[StartRow](ctx, chconn, tmpl, conf.Start, vars)

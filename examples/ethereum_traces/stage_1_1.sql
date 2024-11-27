@@ -23,7 +23,12 @@ as (
                 select
                     n, 
                     JSONExtract(
-                        ethereum_rpc('eth_getBlockByNumber', [evm_hex_encode_int(n), 'false'], '{{.RPC_ENDPOINT}}'),
+                        ethereum_rpc(
+                            'eth_getBlockByNumber', 
+                            [evm_hex_encode_int(n), 'false'], 
+                            '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                        ),
+                        'value',
                         'Tuple(
                             timestamp String,
                             number String,
@@ -40,7 +45,12 @@ as (
                             )
                         ), 
                         JSONExtract(
-                            ethereum_rpc('eth_getBlockReceipts', [evm_hex_encode_int(n)], '{{.RPC_ENDPOINT}}'),
+                            ethereum_rpc(
+                                'eth_getBlockReceipts', 
+                                [evm_hex_encode_int(n)], 
+                                '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                            ),
+                            'value',
                             'Array(
                                 Tuple(
                                     from String,
@@ -81,7 +91,12 @@ as (
                 evm_hex_decode(t.result.output::String) as output
             from block_numbers 
             array join JSONExtract(
-                ethereum_rpc('trace_block', [evm_hex_encode_int(n)], ''),
+                ethereum_rpc(
+                    'trace_block', 
+                    [evm_hex_encode_int(n)], 
+                    '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                ),
+                'value',
                 'Array(
                     Tuple(
                         transactionPosition UInt32,
@@ -145,6 +160,3 @@ as (
     from traces as t
     left join deps as d on t.n = d.n
 )
-settings 
-    max_execution_time = 300,
-    max_memory_usage = 2073741824

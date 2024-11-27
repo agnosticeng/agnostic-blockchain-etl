@@ -1,4 +1,4 @@
-create temporary table "{{.CHAIN}}_blocks_{{.START}}_{{.END}}"
+create temporary table {{.CHAIN}}_blocks_{{.START}}_{{.END}}
 as (
     with
         {{.START}} as start,
@@ -40,8 +40,9 @@ as (
                 ethereum_rpc(
                     'eth_getBlockByNumber', 
                     [evm_hex_encode_int(n), 'false'], 
-                    '{{.RPC_ENDPOINT}}'
+                    '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
                 ),
+                'value',
                 'Tuple(
                     timestamp String,
                     baseFeePerGas String,
@@ -71,4 +72,3 @@ as (
         from block_numbers
     )
 )
-settings max_execution_time = 300

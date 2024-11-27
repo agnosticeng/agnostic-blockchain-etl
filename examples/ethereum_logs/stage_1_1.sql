@@ -22,7 +22,12 @@ as (
                 select
                     n,
                     JSONExtract(
-                        ethereum_rpc('eth_getBlockByNumber', [evm_hex_encode_int(n), 'false'], ''),
+                        ethereum_rpc(
+                            'eth_getBlockByNumber', 
+                            [evm_hex_encode_int(n), 'false'], 
+                            '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                        ),
+                        'value',
                         'Tuple(
                             timestamp String,
                             number String,
@@ -47,7 +52,12 @@ as (
                 arrayMap(x -> evm_hex_decode(x), l.topics) as topics
             from block_numbers 
             array join JSONExtract(
-                ethereum_rpc('eth_getBlockReceipts', [evm_hex_encode_int(n)], '{{.RPC_ENDPOINT}}'),
+                ethereum_rpc(
+                    'eth_getBlockReceipts', 
+                    [evm_hex_encode_int(n)], 
+                    '{{.RPC_ENDPOINT}}#fail-on-error=true&fail-on-null=true'
+                ),
+                'value',
                 'Array(
                     Tuple(
                         from String,
@@ -85,4 +95,3 @@ as (
     from logs as l
     left join deps as d on l.n = d.n
 )
-settings max_execution_time = 300
