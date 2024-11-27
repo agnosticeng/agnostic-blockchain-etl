@@ -10,7 +10,7 @@ import (
 )
 
 type ConnPoolConfig struct {
-	DSN             string
+	Dsn             string
 	MaxConnLifetime time.Duration
 	Settings        map[string]any
 }
@@ -39,8 +39,8 @@ func NewConnPool(conf ConnPoolConfig) *ConnPool {
 		conf.MaxConnLifetime = time.Hour
 	}
 
-	if len(conf.DSN) == 0 {
-		conf.DSN = "tcp://localhost:9000"
+	if len(conf.Dsn) == 0 {
+		conf.Dsn = "tcp://localhost:9000"
 	}
 
 	return &ConnPool{
@@ -72,7 +72,7 @@ func (pool *ConnPool) Acquire() (*Conn, error) {
 		delete(pool.conns, conn.id)
 	}
 
-	chopts, err := clickhouse.ParseDSN(pool.conf.DSN)
+	chopts, err := clickhouse.ParseDSN(pool.conf.Dsn)
 
 	if err != nil {
 		return nil, err

@@ -20,7 +20,6 @@ import (
 )
 
 var Flags = []cli.Flag{
-	&cli.StringFlag{Name: "dsn", Value: "clickhouse://localhost:9000/default"},
 	&cli.StringFlag{Name: "template-path"},
 	&cli.StringSliceFlag{Name: "var"},
 	&cli.DurationFlag{Name: "max-connection-lifetime", Value: time.Hour},
