@@ -80,7 +80,7 @@ func (pool *ConnPool) Acquire() (*Conn, error) {
 
 	chopts.MaxOpenConns = 1
 	chopts.ConnMaxLifetime = pool.conf.MaxConnLifetime * 2
-	chopts.Settings = clickhouse.Settings(pool.conf.Settings)
+	chopts.Settings = clickhouse.Settings(NormalizeSettings(pool.conf.Settings))
 	chconn, err := clickhouse.Open(chopts)
 
 	if err != nil {

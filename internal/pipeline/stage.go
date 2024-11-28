@@ -32,7 +32,7 @@ func Stage(
 	defer logger.Debug("stopped")
 
 	if len(conf.ClickhouseSettings) > 0 {
-		ctx = clickhouse.Context(ctx, clickhouse.WithSettings(conf.ClickhouseSettings))
+		ctx = clickhouse.Context(ctx, clickhouse.WithSettings(ch.NormalizeSettings(conf.ClickhouseSettings)))
 	}
 
 	for {
