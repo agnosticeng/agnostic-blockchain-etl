@@ -3,10 +3,12 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"text/template"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
-	"github.com/agnosticeng/agnostic-blockchain-etl/internal/worker"
+	"github.com/agnosticeng/concu/worker"
+	"github.com/agnosticeng/tallyctx"
 	"github.com/google/uuid"
 	"github.com/samber/lo"
 	slogctx "github.com/veqryn/slog-context"
@@ -36,6 +38,8 @@ func Run(
 	vars map[string]interface{},
 	conf PipelineConfig,
 ) error {
+	var logger = slogctx.FromCtx(ctx)
+
 	if len(conf.Steps) == 0 {
 		return fmt.Errorf("pipeline must have at leats 1 step")
 	}
@@ -54,6 +58,8 @@ func Run(
 		return err
 	}
 
+	logger.Info("initializing pipeline", "start", start)
+
 	var (
 		group, groupctx                 = errgroup.WithContext(ctx)
 		tipChan                         = make(chan uint64, 1)
@@ -63,8 +69,11 @@ func Run(
 	)
 
 	group.Go(func() error {
+		var batcherCtx = slogctx.With(groupctx, "module", "batcher")
+		batcherCtx = tallyctx.NewContext(batcherCtx, tallyctx.FromContextOrNoop(batcherCtx).SubScope("batcher"))
+
 		return Batcher(
-			groupctx,
+			batcherCtx,
 			pool,
 			vars,
 			start,
@@ -76,6 +85,9 @@ func Run(
 	})
 
 	group.Go(func() error {
+		tipTrackerCtx = slogctx.With(tipTrackerCtx, "module", "batcher")
+		tipTrackerCtx = tallyctx.NewContext(tipTrackerCtx, tallyctx.FromContextOrNoop(tipTrackerCtx).SubScope("batcher"))
+
 		return TipTracker(
 			tipTrackerCtx,
 			pool,
@@ -93,22 +105,38 @@ func Run(
 		)
 
 		group.Go(func() error {
-			return worker.Controller(
+			defer close(outchan)
+
+			return worker.RunN(
 				groupctx,
 				step.Workers,
 				func(ctx context.Context, j int) func() error {
 					return func() error {
+						var stepCtx = slogctx.With(
+							ctx,
+							"module", "step",
+							"step", i,
+							"worker", j,
+						)
+
+						stepCtx = tallyctx.NewContext(
+							stepCtx,
+							tallyctx.FromContextOrNoop(stepCtx).
+								SubScope("step").
+								Tagged(map[string]string{
+									"step":   strconv.FormatInt(int64(i), 10),
+									"worker": strconv.FormatInt(int64(j), 10),
+								}),
+						)
+
 						return Step(
-							slogctx.With(ctx, "step", i, "worker", j),
+							stepCtx,
 							tmpl,
 							inchan,
 							outchan,
 							step,
 						)
 					}
-				},
-				func() {
-					close(outchan)
 				},
 			)
 		})
@@ -117,7 +145,10 @@ func Run(
 	}
 
 	group.Go(func() error {
-		return Finalizer(groupctx, lastOutChan, conf.Finalizer)
+		var finalizerCtx = slogctx.With(groupctx, "module", "finalizer")
+		finalizerCtx = tallyctx.NewContext(finalizerCtx, tallyctx.FromContextOrNoop(finalizerCtx).SubScope("finalizer"))
+
+		return Finalizer(finalizerCtx, lastOutChan, conf.Finalizer)
 	})
 
 	return group.Wait()

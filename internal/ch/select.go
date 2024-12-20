@@ -46,6 +46,8 @@ func SelectSingleRowFromTemplate[T any](
 		q,
 	)
 
+	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, &md)
+
 	if err != nil {
 		return zero, nil, fmt.Errorf("failed to execute template %s: %w", name, err)
 	}
@@ -54,6 +56,5 @@ func SelectSingleRowFromTemplate[T any](
 		return zero, nil, fmt.Errorf("query returned %d rows instead of 1", len(res))
 	}
 
-	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, &md)
 	return res[0], &md, nil
 }

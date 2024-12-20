@@ -43,10 +43,11 @@ func ExecFromTemplate(
 		q,
 	)
 
+	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, &md)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute template %s: %w", name, err)
 	}
 
-	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, &md)
 	return &md, err
 }

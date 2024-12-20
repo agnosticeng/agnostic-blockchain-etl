@@ -40,7 +40,7 @@ func NewConnPool(conf ConnPoolConfig) *ConnPool {
 	}
 
 	if len(conf.Dsn) == 0 {
-		conf.Dsn = "tcp://localhost:9000"
+		conf.Dsn = "tcp://127.0.0.1:9000"
 	}
 
 	return &ConnPool{

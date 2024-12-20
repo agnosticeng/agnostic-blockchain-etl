@@ -2,8 +2,8 @@ package render
 
 import (
 	"fmt"
-	"os"
-	"text/template"
+	"net/url"
+	"path/filepath"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	"github.com/urfave/cli/v2"
@@ -11,6 +11,7 @@ import (
 
 var Flags = []cli.Flag{
 	&cli.StringSliceFlag{Name: "var"},
+	&cli.StringFlag{Name: "filter"},
 }
 
 func Command() *cli.Command {
@@ -19,34 +20,30 @@ func Command() *cli.Command {
 		Flags: Flags,
 		Action: func(ctx *cli.Context) error {
 			var (
-				path = ctx.Args().Get(0)
-				vars = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
+				path   = ctx.Args().Get(0)
+				vars   = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
+				filter = ctx.String("filter")
 			)
 
-			fmt.Println(ctx.StringSlice("var"))
-			fmt.Println(vars)
-
-			if len(path) == 0 {
-				return fmt.Errorf("a path must be specified")
-			}
-
-			stat, err := os.Stat(path)
+			u, err := url.Parse(path)
 
 			if err != nil {
 				return err
 			}
 
-			if !stat.IsDir() {
-				return fmt.Errorf("path must point to a directory of SQL template files")
-			}
-
-			tmpl, err := template.ParseFS(os.DirFS(path), "*.sql")
+			tmpl, err := utils.LoadTemplates(ctx.Context, u)
 
 			if err != nil {
 				return err
 			}
 
 			for _, tmpl := range tmpl.Templates() {
+				if len(filter) > 0 {
+					if m, _ := filepath.Match(filter, tmpl.Name()); !m {
+						continue
+					}
+				}
+
 				fmt.Println("--------------------------------------------------------------------------------")
 				fmt.Println(tmpl.Name())
 				fmt.Println("--------------------------------------------------------------------------------")

@@ -7,6 +7,10 @@ import (
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/pipeline"
 	"github.com/agnosticeng/agnostic-blockchain-etl/cmd/render"
+	"github.com/agnosticeng/cliutils"
+	"github.com/agnosticeng/cnf"
+	"github.com/agnosticeng/cnf/providers/env"
+	objstrcli "github.com/agnosticeng/objstr/cli"
 	"github.com/agnosticeng/panicsafe"
 	"github.com/agnosticeng/slogcli"
 	"github.com/urfave/cli/v2"
@@ -14,9 +18,16 @@ import (
 
 func main() {
 	app := cli.App{
-		Name:   "agnostic-blockchain-etl",
-		Flags:  slogcli.SlogFlags(),
-		Before: slogcli.SlogBefore,
+		Name:  "agnostic-blockchain-etl",
+		Flags: slogcli.SlogFlags(),
+		Before: cliutils.CombineBeforeFuncs(
+			slogcli.SlogBefore,
+			objstrcli.ObjStrBefore(cnf.WithProvider(env.NewEnvProvider("OBJSTR"))),
+		),
+		After: cliutils.CombineAfterFuncs(
+			objstrcli.ObjStrAfter,
+			slogcli.SlogAfter,
+		),
 		Commands: []*cli.Command{
 			pipeline.Command(),
 			render.Command(),
