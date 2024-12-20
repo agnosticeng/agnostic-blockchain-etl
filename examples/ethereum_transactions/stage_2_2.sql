@@ -1,1 +1,0 @@
-drop temporary table {{.CHAIN}}_transactions_{{.START}}_{{.END}}

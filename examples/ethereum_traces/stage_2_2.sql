@@ -1,1 +1,0 @@
-drop temporary table {{.CHAIN}}_traces_{{.START}}_{{.END}}

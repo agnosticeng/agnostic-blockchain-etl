@@ -1,0 +1,15 @@
+Clickhouse:
+  Settings:
+    max_execution_time: 600
+    input_format_parquet_use_native_reader: 1
+
+Batcher:
+  MaxBatchSize: 25
+
+TipTracker:
+  PollInterval: 60s
+
+Steps:
+  - Stage:
+      Files:
+        - transform.sql

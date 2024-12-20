@@ -44,7 +44,9 @@ settings
         type=s3,
         endpoint='{{.S3_ENDPOINT}}',
         region='{{.S3_REGION}}',
-        use_environment_credentials=1,
+        access_key_id='{{.S3_ACCESS_KEY_ID}}',
+        secret_access_key='{{.S3_SECRET_ACCESS_KEY}}',
+        use_environment_credentials=0,
         metadata_type=plain_rewritable,
         readonly=false
     ),

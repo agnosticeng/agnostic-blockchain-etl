@@ -1,4 +1,4 @@
-create temporary table {{.CHAIN}}_logs_{{.START}}_{{.END}}
+create temporary table buffer_{{.START}}_{{.END}}
 as (
     with
         {{.START}} as start,
