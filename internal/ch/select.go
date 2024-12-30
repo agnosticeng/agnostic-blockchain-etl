@@ -6,23 +6,21 @@ import (
 	"log/slog"
 	"text/template"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	slogctx "github.com/veqryn/slog-context"
 )
 
 func SelectSingleRowFromTemplate[T any](
 	ctx context.Context,
-	conn driver.Conn,
+	conn engine.Conn,
 	tmpl *template.Template,
 	name string,
 	vars map[string]interface{},
-) (T, *QueryMetadata, error) {
+) (T, *engine.QueryMetadata, error) {
 	var (
 		logger = slogctx.FromCtx(ctx)
 		zero   T
-		md     QueryMetadata
 		res    []T
 	)
 
@@ -36,17 +34,8 @@ func SelectSingleRowFromTemplate[T any](
 		logger.Log(ctx, -10, q, "template", name)
 	}
 
-	err = conn.Select(
-		clickhouse.Context(
-			ctx,
-			clickhouse.WithProgress(md.progressHandler),
-			clickhouse.WithLogs(md.logHandler),
-		),
-		&res,
-		q,
-	)
-
-	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, &md)
+	md, err := conn.Select(ctx, &res, q)
+	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, md)
 
 	if err != nil {
 		return zero, nil, fmt.Errorf("failed to execute template %s: %w", name, err)
@@ -56,5 +45,5 @@ func SelectSingleRowFromTemplate[T any](
 		return zero, nil, fmt.Errorf("query returned %d rows instead of 1", len(res))
 	}
 
-	return res[0], &md, nil
+	return res[0], md, nil
 }

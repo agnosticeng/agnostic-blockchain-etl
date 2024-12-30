@@ -5,6 +5,7 @@ import (
 	"text/template"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 )
 
 type InitConfig struct {
@@ -23,14 +24,14 @@ func (conf InitConfig) WithDefaults() InitConfig {
 
 func Init(
 	ctx context.Context,
-	pool *ch.ConnPool,
+	engine engine.Engine,
 	tmpl *template.Template,
 	vars map[string]interface{},
 	conf InitConfig,
 ) (uint64, error) {
 	var start = conf.DefaultStart
 
-	chconn, err := pool.Acquire()
+	chconn, err := engine.AcquireConn()
 
 	if err != nil {
 		return start, err

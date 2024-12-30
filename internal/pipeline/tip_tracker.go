@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -29,7 +30,7 @@ func (conf TipTrackerConfig) WithDefaults() TipTrackerConfig {
 
 func TipTracker(
 	ctx context.Context,
-	pool *ch.ConnPool,
+	engine engine.Engine,
 	tmpl *template.Template,
 	vars map[string]interface{},
 	outchan chan<- uint64,
@@ -44,7 +45,7 @@ func TipTracker(
 
 	for {
 		var err = func() error {
-			chconn, err := pool.Acquire()
+			chconn, err := engine.AcquireConn()
 
 			if err != nil {
 				return err

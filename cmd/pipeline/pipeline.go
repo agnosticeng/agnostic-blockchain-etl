@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine/impl"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/pipeline"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/pipeline_retrier"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
@@ -33,10 +34,9 @@ var Flags = []cli.Flag{
 
 type config struct {
 	pipeline.PipelineConfig
-	Clickhouse    ch.ConnPoolConfig
-	LocalExecutor *ch.LocalExecutorConfig
-	StartupProbe  ch.StartupProbeConfig
-	PromAddr      string
+	Engine       impl.EngineConfig
+	StartupProbe ch.StartupProbeConfig
+	PromAddr     string
 }
 
 func Command() *cli.Command {
@@ -102,28 +102,34 @@ func Command() *cli.Command {
 			}
 
 			go http.ListenAndServe("", promhttp.Handler())
-
 			pipelineCtx = tallyctx.NewContext(pipelineCtx, scope)
+
+			engine, err := impl.NewEngine(pipelineCtx, cfg.Engine)
+
+			if err != nil {
+				return err
+			}
+
+			if err := engine.Start(); err != nil {
+				return err
+			}
 
 			var group, groupCtx = errgroup.WithContext(pipelineCtx)
 
-			if cfg.LocalExecutor != nil {
-				group.Go(func() error {
-					return ch.RunLocalExecutor(groupCtx, *cfg.LocalExecutor)
-				})
-			}
+			group.Go(func() error {
+				return engine.Wait()
+			})
 
 			group.Go(func() error {
-				var pool = ch.NewConnPool(cfg.Clickhouse)
-				defer pool.Close()
+				defer engine.Stop()
 
-				if err := ch.RunStartupProbe(groupCtx, pool, cfg.StartupProbe); err != nil {
+				if err := ch.RunStartupProbe(groupCtx, engine, cfg.StartupProbe); err != nil {
 					return err
 				}
 
 				return pipeline_retrier.Run(
 					groupCtx,
-					pool,
+					engine,
 					tmpl,
 					vars,
 					cfg.PipelineConfig.WithDefaults(),

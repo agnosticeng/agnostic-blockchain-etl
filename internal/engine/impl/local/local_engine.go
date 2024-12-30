@@ -1,32 +1,44 @@
-package ch
+package local
 
 import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"syscall"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	"github.com/mholt/archiver/v4"
 	slogctx "github.com/veqryn/slog-context"
 	"gopkg.in/yaml.v3"
 )
 
-type LocalExecutorConfig struct {
+type LocalEngineConfig struct {
+	ConnPoolConfig
 	BinaryPath     string
 	WorkingDir     string
+	Env            map[string]string
 	Bundles        []string
 	BundlesPath    string
 	DisableCleanup bool
-	Settings       clickhouse.Settings
+	ServerSettings map[string]any
 }
 
-func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
+type LocalEngine struct {
+	conf   LocalEngineConfig
+	logger *slog.Logger
+	cmd    *exec.Cmd
+	pool   *ConnPool
+}
+
+func NewLocalEngine(ctx context.Context, conf LocalEngineConfig) (*LocalEngine, error) {
 	var logger = slogctx.FromCtx(ctx)
 
 	if len(conf.BinaryPath) == 0 {
@@ -37,7 +49,7 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 		path, err := os.UserCacheDir()
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		conf.BundlesPath = filepath.Join(path, "agnostic-blockchain-etl/bundles")
@@ -47,7 +59,7 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 		path, err := exec.LookPath(conf.BinaryPath)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		conf.BinaryPath = path
@@ -57,19 +69,19 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 		p, err := os.MkdirTemp(os.TempDir(), "*")
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		conf.WorkingDir = p
 		logger.Debug("created temporary working dir", "path", conf.WorkingDir)
 	} else {
 		if err := os.MkdirAll(conf.WorkingDir, 0700); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	if !conf.DisableCleanup {
-		defer os.RemoveAll(conf.WorkingDir)
+	if len(conf.Dsn) == 0 {
+		conf.Dsn = "tcp://127.0.0.1:9001/default"
 	}
 
 	var (
@@ -77,7 +89,7 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 			"path": "./",
 			"user_defined_executable_functions_config": "*_function.*ml",
 			"listen_host": "127.0.0.1",
-			"tcp_port":    9000,
+			"tcp_port":    9001,
 			"profiles": map[string]interface{}{
 				"default": map[string]interface{}{},
 			},
@@ -97,21 +109,21 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 	)
 
 	maps.Copy(finalSettings, defaultSettings)
-	maps.Copy(finalSettings, NormalizeSettings(conf.Settings))
+	maps.Copy(finalSettings, ch.NormalizeSettings(conf.ServerSettings))
 
 	data, err := yaml.Marshal(finalSettings)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := os.WriteFile(filepath.Join(conf.WorkingDir, "config.yaml"), data, 0644); err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(conf.Bundles) > 0 {
 		if err := os.MkdirAll(conf.BundlesPath, 0700); err != nil {
-			return err
+			return nil, err
 		}
 
 		for _, remote := range conf.Bundles {
@@ -119,27 +131,27 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 
 			logger.Debug("downloading bundle", "url", remote, "path", local)
 
-			if err := utils.CachedDownload(remote, local); err != nil {
-				return fmt.Errorf("error while downloading bundle %s: %w", remote, err)
+			if err := utils.CachedDownload(ctx, remote, local); err != nil {
+				return nil, fmt.Errorf("error while downloading bundle %s: %w", remote, err)
 			}
 
 			f, err := os.Open(local)
 
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			format, r, err := archiver.Identify(ctx, local, f)
 
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if ex, ok := format.(archiver.Extractor); ok {
 				logger.Debug("extracting bundle", "path", local)
 
 				if err := ex.Extract(ctx, r, extractBundle(conf.WorkingDir)); err != nil {
-					return err
+					return nil, err
 				}
 			}
 		}
@@ -154,23 +166,47 @@ func RunLocalExecutor(ctx context.Context, conf LocalExecutorConfig) error {
 	)
 
 	cmd.Dir = conf.WorkingDir
+	cmd.Env = slices.Clone(os.Environ())
 
-	go func() {
-		<-ctx.Done()
-		cmd.Process.Signal(syscall.SIGTERM)
-	}()
+	for k, v := range conf.Env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%v", k, v))
+	}
 
-	logger.Debug("running clickhouse server")
+	return &LocalEngine{
+		conf:   conf,
+		logger: logger,
+		cmd:    cmd,
+		pool:   NewConnPool(conf.ConnPoolConfig),
+	}, nil
+}
 
-	err = cmd.Run()
+func (eng *LocalEngine) Start() error {
+	return eng.cmd.Start()
+}
+
+func (eng *LocalEngine) Stop() {
+	eng.cmd.Process.Signal(syscall.SIGTERM)
+}
+
+func (eng *LocalEngine) Wait() error {
+	if !eng.conf.DisableCleanup {
+		defer os.RemoveAll(eng.conf.WorkingDir)
+	}
+
+	eng.pool.Close()
+	var err = eng.cmd.Wait()
 
 	if err == nil {
 		return nil
 	}
 
-	content, _ := os.ReadFile(filepath.Join(conf.WorkingDir, "clickhouse-server-error.log"))
-	logger.Error("clickhouse server error", "log", string(content))
+	content, _ := os.ReadFile(filepath.Join(eng.conf.WorkingDir, "clickhouse-server-error.log"))
+	eng.logger.Error("clickhouse server error", "log", string(content))
 	return err
+}
+
+func (eng *LocalEngine) AcquireConn() (engine.Conn, error) {
+	return eng.pool.Acquire()
 }
 
 func extractBundle(basePath string) func(ctx context.Context, info archiver.FileInfo) error {

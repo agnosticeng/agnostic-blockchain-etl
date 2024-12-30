@@ -4,7 +4,7 @@ import (
 	"context"
 	"maps"
 
-	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -23,7 +23,7 @@ func (conf BatcherConfig) WithDefaults() BatcherConfig {
 
 func Batcher(
 	ctx context.Context,
-	pool *ch.ConnPool,
+	engine engine.Engine,
 	vars map[string]interface{},
 	start uint64,
 	inchan <-chan uint64,
@@ -61,7 +61,7 @@ func Batcher(
 					break
 				}
 
-				chconn, err := pool.Acquire()
+				chconn, err := engine.AcquireConn()
 
 				if err != nil {
 					return err

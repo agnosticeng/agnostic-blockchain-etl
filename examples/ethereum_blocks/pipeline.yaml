@@ -1,29 +1,15 @@
-LocalExecutor:
-  DisableCleanup: true
-  Bundles:
-    - https://pub-1d4d40f0d02c4bd38871ab17542145f6.r2.dev/agnostic-clickhouse-udf_0.0.3_linux_amd64_v3.tar.gz
-
-Clickhouse:
-  Settings:
-    default_temporary_table_engine: Log
-    allow_experimental_dynamic_type: 1
-    enable_named_columns_in_function_tuple: 1
-    max_execution_time: 300
-
 Engine:
   Local:
-    Dsn: 'v,ebzjns' 
     Bundles:
-      - https://pub-1d4d40f0d02c4bd38871ab17542145f6.r2.dev/agnostic-clickhouse-udf_0.0.3_linux_amd64_v3.tar.gz
-
-  Chdb: {}
-  Remote:
-    Dsn: 'ferz'
-
-
+      - https://github.com/agnosticeng/agnostic-clickhouse-udf/releases/download/v0.0.4/agnostic-clickhouse-udf_0.0.4_linux_amd64_v3.tar.gz
+    Settings:
+      default_temporary_table_engine: Log
+      allow_experimental_dynamic_type: 1
+      enable_named_columns_in_function_tuple: 1
+      max_execution_time: 300
 
 Batcher:
-  MaxBatchSize: 1000
+  MaxBatchSize: 100
 
 TipTracker:
   PollInterval: 60s

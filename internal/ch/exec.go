@@ -6,23 +6,19 @@ import (
 	"log/slog"
 	"text/template"
 
-	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
 	slogctx "github.com/veqryn/slog-context"
 )
 
 func ExecFromTemplate(
 	ctx context.Context,
-	conn driver.Conn,
+	conn engine.Conn,
 	tmpl *template.Template,
 	name string,
 	vars map[string]interface{},
-) (*QueryMetadata, error) {
-	var (
-		logger = slogctx.FromCtx(ctx)
-		md     QueryMetadata
-	)
+) (*engine.QueryMetadata, error) {
+	var logger = slogctx.FromCtx(ctx)
 
 	q, err := utils.RenderTemplate(tmpl, name, vars)
 
@@ -34,20 +30,12 @@ func ExecFromTemplate(
 		logger.Log(ctx, -10, q, "template", name)
 	}
 
-	err = conn.Exec(
-		clickhouse.Context(
-			ctx,
-			clickhouse.WithProgress(md.progressHandler),
-			clickhouse.WithLogs(md.logHandler),
-		),
-		q,
-	)
-
-	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, &md)
+	md, err := conn.Exec(ctx, q)
+	LogQueryMetadata(ctx, logger, slog.LevelDebug, name, md)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute template %s: %w", name, err)
 	}
 
-	return &md, err
+	return md, err
 }

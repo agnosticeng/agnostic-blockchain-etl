@@ -7,7 +7,7 @@ import (
 
 	chproto "github.com/ClickHouse/ch-go/proto"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/proto"
-	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/pipeline"
 	"github.com/samber/lo"
 	slogctx "github.com/veqryn/slog-context"
@@ -19,7 +19,7 @@ type RetryStrategy struct {
 
 func Run(
 	ctx context.Context,
-	pool *ch.ConnPool,
+	engine engine.Engine,
 	tmpl *template.Template,
 	vars map[string]interface{},
 	conf pipeline.PipelineConfig,
@@ -36,7 +36,7 @@ func Run(
 	var logger = slogctx.FromCtx(ctx)
 
 	for {
-		var err = pipeline.Run(ctx, pool, tmpl, vars, conf)
+		var err = pipeline.Run(ctx, engine, tmpl, vars, conf)
 
 		ex, ok := lo.ErrorsAs[*proto.Exception](err)
 

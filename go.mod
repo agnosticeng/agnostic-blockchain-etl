@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/ClickHouse/ch-go v0.63.1
 	github.com/ClickHouse/clickhouse-go/v2 v2.29.0
-	github.com/Masterminds/sprig/v3 v3.3.0
+	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/agnosticeng/cliutils v0.1.0
 	github.com/agnosticeng/cnf v0.1.0
 	github.com/agnosticeng/concu v0.0.1
@@ -29,7 +29,7 @@ require (
 require (
 	dario.cat/mergo v1.0.1 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.3.1 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/STARRY-S/zip v0.1.0 // indirect
 	github.com/agnosticeng/dynamap v0.1.2 // indirect
 	github.com/agnosticeng/errgroup v0.2.0 // indirect
@@ -51,6 +51,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
@@ -73,7 +74,6 @@ require (
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.5 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
-	github.com/spf13/cast v1.7.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect

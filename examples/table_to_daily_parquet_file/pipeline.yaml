@@ -1,7 +1,10 @@
-Clickhouse:
-  Settings:
-    max_execution_time: 600
-    input_format_parquet_use_native_reader: 1
+Engine:
+  Local:
+    Bundles:
+      - https://github.com/agnosticeng/agnostic-clickhouse-udf/releases/download/v0.0.4/agnostic-clickhouse-udf_0.0.4_linux_amd64_v3.tar.gz
+    Settings:
+      max_execution_time: 600
+      input_format_parquet_use_native_reader: 1
 
 Batcher:
   MaxBatchSize: 25

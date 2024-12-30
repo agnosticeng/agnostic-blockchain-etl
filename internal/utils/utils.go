@@ -5,16 +5,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
+	"github.com/Masterminds/sprig"
 	"github.com/agnosticeng/objstr"
 	"github.com/agnosticeng/objstr/utils"
 )
@@ -40,59 +37,18 @@ func RenderTemplate(tmpl *template.Template, name string, vars map[string]interf
 	return buf.String(), nil
 }
 
-func CachedDownload(src string, dest string) error {
+func CachedDownload(ctx context.Context, src string, dest string) error {
+	srcUrl, err := url.Parse(src)
+
+	if err != nil {
+		return err
+	}
+
 	if _, err := os.Stat(dest); err == nil {
 		return nil
 	}
 
-	return Download(src, dest)
-}
-
-func Download(src string, dest string) error {
-	u, err := url.Parse(src)
-
-	if err != nil {
-		return err
-	}
-
-	var r io.ReadCloser
-
-	switch u.Scheme {
-	case "", "file":
-		r, err = os.Open(u.Path)
-
-		if err != nil {
-			return err
-		}
-	case "http", "https":
-		resp, err := http.Get(u.String())
-
-		if err != nil {
-			return err
-		}
-
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("bad status code: %d", resp.StatusCode)
-		}
-
-		r = resp.Body
-	default:
-		return fmt.Errorf("unhandled url scheme: %s", u.Scheme)
-	}
-
-	defer r.Close()
-
-	w, err := os.Create(dest)
-
-	if err != nil {
-		return err
-	}
-
-	if _, err := io.Copy(w, r); err != nil {
-		return err
-	}
-
-	return w.Close()
+	return objstr.FromContextOrDefault(ctx).Copy(ctx, srcUrl, &url.URL{Scheme: "file", Path: dest})
 }
 
 func SHA256Sum(s string) string {

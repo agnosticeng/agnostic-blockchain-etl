@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	slogctx "github.com/veqryn/slog-context"
 )
 
@@ -12,7 +13,7 @@ type StartupProbeConfig struct {
 	PollInterval time.Duration
 }
 
-func RunStartupProbe(ctx context.Context, pool *ConnPool, conf StartupProbeConfig) error {
+func RunStartupProbe(ctx context.Context, engine engine.Engine, conf StartupProbeConfig) error {
 	var logger = slogctx.FromCtx(ctx)
 
 	if conf.MaxDelay == 0 {
@@ -30,7 +31,7 @@ func RunStartupProbe(ctx context.Context, pool *ConnPool, conf StartupProbeConfi
 		logger.Debug("probing clickhouse target")
 
 		var err = func() error {
-			conn, err := pool.Acquire()
+			conn, err := engine.AcquireConn()
 
 			if err != nil {
 				return err

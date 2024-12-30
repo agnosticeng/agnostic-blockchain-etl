@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"text/template"
 
-	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/agnosticeng/concu/worker"
 	"github.com/agnosticeng/tallyctx"
 	"github.com/google/uuid"
@@ -33,7 +33,7 @@ func (conf PipelineConfig) WithDefaults() PipelineConfig {
 
 func Run(
 	ctx context.Context,
-	pool *ch.ConnPool,
+	engine engine.Engine,
 	tmpl *template.Template,
 	vars map[string]interface{},
 	conf PipelineConfig,
@@ -52,7 +52,7 @@ func Run(
 
 	vars["UUID"] = runUUID.String()
 
-	start, err := Init(ctx, pool, tmpl, vars, conf.Init)
+	start, err := Init(ctx, engine, tmpl, vars, conf.Init)
 
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func Run(
 
 		return Batcher(
 			batcherCtx,
-			pool,
+			engine,
 			vars,
 			start,
 			tipChan,
@@ -90,7 +90,7 @@ func Run(
 
 		return TipTracker(
 			tipTrackerCtx,
-			pool,
+			engine,
 			tmpl,
 			vars,
 			tipChan,

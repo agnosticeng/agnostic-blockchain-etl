@@ -38,7 +38,7 @@ attach table if not exists {{.CHAIN}}_traces uuid '{{.TABLE_UUID}}' (
 )
 engine = ReplacingMergeTree
 partition by toYYYYMM(timestamp)
-order by (block_number, trace_address)
+order by (block_number, transaction_index, trace_address)
 settings 
     disk = disk(
         type=s3,

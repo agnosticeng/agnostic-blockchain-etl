@@ -3,7 +3,7 @@ package pipeline
 import (
 	"sort"
 
-	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
+	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 )
 
 type StartRow struct {
@@ -16,7 +16,7 @@ type TipRow struct {
 
 type Batch struct {
 	Number int
-	Conn   *ch.Conn
+	Conn   engine.Conn
 	Start  uint64
 	End    uint64
 	Vars   map[string]interface{}
