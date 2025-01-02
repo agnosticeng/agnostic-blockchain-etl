@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"text/template"
+
+	"github.com/agnosticeng/tallyctx"
 )
 
 type StepConfig struct {
@@ -38,9 +40,22 @@ func Step(
 ) error {
 	switch {
 	case conf.Stage != nil:
-		return Stage(ctx, tmpl, inchan, outchan, *conf.Stage)
+		return Stage(
+			tallyctx.NewContext(ctx, tallyctx.FromContextOrNoop(ctx).SubScope("stage")),
+			tmpl,
+			inchan,
+			outchan,
+			*conf.Stage,
+		)
+
 	case conf.Sequencer != nil:
-		return Sequencer(ctx, inchan, outchan, *conf.Sequencer)
+		return Sequencer(
+			tallyctx.NewContext(ctx, tallyctx.FromContextOrNoop(ctx).SubScope("sequencer")),
+			inchan,
+			outchan,
+			*conf.Sequencer,
+		)
+
 	default:
 		return fmt.Errorf("step is neither stage nor sequencer")
 	}

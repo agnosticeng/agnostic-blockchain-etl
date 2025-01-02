@@ -69,8 +69,7 @@ func Run(
 	)
 
 	group.Go(func() error {
-		var batcherCtx = slogctx.With(groupctx, "module", "batcher")
-		batcherCtx = tallyctx.NewContext(batcherCtx, tallyctx.FromContextOrNoop(batcherCtx).SubScope("batcher"))
+		var batcherCtx = tallyctx.NewContext(groupctx, tallyctx.FromContextOrNoop(groupctx).SubScope("batcher"))
 
 		return Batcher(
 			batcherCtx,
@@ -85,8 +84,7 @@ func Run(
 	})
 
 	group.Go(func() error {
-		tipTrackerCtx = slogctx.With(tipTrackerCtx, "module", "batcher")
-		tipTrackerCtx = tallyctx.NewContext(tipTrackerCtx, tallyctx.FromContextOrNoop(tipTrackerCtx).SubScope("batcher"))
+		tipTrackerCtx = tallyctx.NewContext(groupctx, tallyctx.FromContextOrNoop(tipTrackerCtx).SubScope("tip_tracker"))
 
 		return TipTracker(
 			tipTrackerCtx,
@@ -114,7 +112,6 @@ func Run(
 					return func() error {
 						var stepCtx = slogctx.With(
 							ctx,
-							"module", "step",
 							"step", i,
 							"worker", j,
 						)

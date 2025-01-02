@@ -15,6 +15,7 @@ import (
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/utils"
+	"github.com/iancoleman/strcase"
 	"github.com/mholt/archiver/v4"
 	slogctx "github.com/veqryn/slog-context"
 	"gopkg.in/yaml.v3"
@@ -169,7 +170,7 @@ func NewLocalEngine(ctx context.Context, conf LocalEngineConfig) (*LocalEngine, 
 	cmd.Env = slices.Clone(os.Environ())
 
 	for k, v := range conf.Env {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%v", k, v))
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%v", strcase.ToScreamingSnake(k), v))
 	}
 
 	return &LocalEngine{

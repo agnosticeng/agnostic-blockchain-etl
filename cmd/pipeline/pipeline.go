@@ -98,10 +98,14 @@ func Command() *cli.Command {
 			defer scopeCloser.Close()
 
 			if len(cfg.PromAddr) == 0 {
-				cfg.PromAddr = ":9000"
+				cfg.PromAddr = ":9999"
 			}
 
-			go http.ListenAndServe("", promhttp.Handler())
+			go func() {
+				logger.Info("prometheus HTTP server started", "addr", cfg.PromAddr)
+				http.ListenAndServe(cfg.PromAddr, promhttp.Handler())
+			}()
+
 			pipelineCtx = tallyctx.NewContext(pipelineCtx, scope)
 
 			engine, err := impl.NewEngine(pipelineCtx, cfg.Engine)
