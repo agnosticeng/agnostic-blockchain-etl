@@ -4,8 +4,20 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/agnosticeng/tallyctx"
+	"github.com/uber-go/tally/v4"
 	slogctx "github.com/veqryn/slog-context"
 )
+
+type SequencerMetrics struct {
+	BufferSize tally.Gauge
+}
+
+func NewSequencerMetrics(scope tally.Scope) *SequencerMetrics {
+	return &SequencerMetrics{
+		BufferSize: scope.Gauge("buffer_size"),
+	}
+}
 
 type SequencerConfig struct{}
 
@@ -16,6 +28,7 @@ func Sequencer(
 	conf SequencerConfig,
 ) error {
 	var (
+		metrics            = NewSequencerMetrics(tallyctx.FromContextOrNoop(ctx))
 		buf                BatchBuffer
 		nextSequenceNumber int
 		logger             = slogctx.FromCtx(ctx)
@@ -34,6 +47,7 @@ func Sequencer(
 			}
 
 			buf.Insert(b)
+			metrics.BufferSize.Update(float64(len(buf)))
 
 			for {
 				if len(buf) == 0 {
@@ -62,6 +76,7 @@ func Sequencer(
 
 				nextSequenceNumber++
 				buf = buf[1:]
+				metrics.BufferSize.Update(float64(len(buf)))
 			}
 
 		}

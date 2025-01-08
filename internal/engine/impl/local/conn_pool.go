@@ -2,6 +2,7 @@ package local
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -201,5 +202,19 @@ func logHandler(md *engine.QueryMetadata) func(*clickhouse.Log) {
 			Source:   l.Source,
 			Text:     l.Text,
 		})
+	}
+}
+
+func profileInfoHandler(_ *engine.QueryMetadata) func(*clickhouse.ProfileInfo) {
+	return func(pi *clickhouse.ProfileInfo) {
+		fmt.Println("PROFILE INFO", pi.String())
+	}
+}
+
+func profileEventsHandler(_ *engine.QueryMetadata) func([]clickhouse.ProfileEvent) {
+	return func(events []clickhouse.ProfileEvent) {
+		for _, event := range events {
+			fmt.Println("PROFILE EVENT", event.Name, event.Type, event.Value)
+		}
 	}
 }

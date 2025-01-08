@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"log/slog"
 	"text/template"
 	"time"
 
@@ -13,17 +14,14 @@ import (
 	slogctx "github.com/veqryn/slog-context"
 )
 
-type StageConfig struct {
-	Files              []string
-	ClickhouseSettings map[string]any
-}
-
-func (conf StageConfig) WithDefaults() StageConfig {
-	return conf
-}
-
 type StageFileMetrics struct {
 	QueryExecutionTime tally.Histogram
+	Elapsed            tally.Histogram
+	Rows               tally.Counter
+	Bytes              tally.Counter
+	TotalRows          tally.Counter
+	WroteRows          tally.Counter
+	WroteBytes         tally.Counter
 }
 
 func NewStageFileMetrics(scope tally.Scope) *StageFileMetrics {
@@ -32,24 +30,44 @@ func NewStageFileMetrics(scope tally.Scope) *StageFileMetrics {
 			"query_execution_time",
 			tally.MustMakeExponentialDurationBuckets(100*time.Millisecond, 2, 10),
 		),
+		Elapsed: scope.Histogram(
+			"elapsed",
+			tally.MustMakeExponentialDurationBuckets(100*time.Millisecond, 2, 10),
+		),
+		Rows:       scope.Counter("rows"),
+		Bytes:      scope.Counter("bytes"),
+		TotalRows:  scope.Counter("total_rows"),
+		WroteRows:  scope.Counter("wrote_rows"),
+		WroteBytes: scope.Counter("wrote_bytes"),
 	}
 }
 
 type StageMetrics struct {
+	Active           tally.Gauge
 	OutChanQueueTime tally.Histogram
 	Files            []*StageFileMetrics
 }
 
 func NewStageMetrics(scope tally.Scope, files []string) *StageMetrics {
 	return &StageMetrics{
+		Active: scope.Gauge("active"),
 		OutChanQueueTime: scope.Histogram(
 			"out_chan_queue_time",
-			tally.MustMakeExponentialDurationBuckets(time.Millisecond, 2, 10),
+			tally.MustMakeExponentialDurationBuckets(time.Millisecond*5, 2, 20),
 		),
 		Files: lo.Map(files, func(file string, _ int) *StageFileMetrics {
 			return NewStageFileMetrics(scope.Tagged(map[string]string{"file": file}))
 		}),
 	}
+}
+
+type StageConfig struct {
+	Files              []string
+	ClickhouseSettings map[string]any
+}
+
+func (conf StageConfig) WithDefaults() StageConfig {
+	return conf
 }
 
 func Stage(
@@ -81,29 +99,7 @@ func Stage(
 			}
 
 			for i, file := range conf.Files {
-				var t0 = time.Now()
-
-				_, err := ch.ExecFromTemplate(
-					ctx,
-					b.Conn,
-					tmpl,
-					file,
-					b.Vars,
-				)
-
-				if err != nil {
-					return err
-				}
-
-				metrics.Files[i].QueryExecutionTime.RecordDuration(time.Since(t0))
-
-				logger.Debug(
-					file,
-					"number", b.Number,
-					"start", b.Start,
-					"end", b.End,
-					"duration", time.Since(t0),
-				)
+				executeQueryFile(ctx, tmpl, file, b, metrics, logger, i)
 			}
 
 			var t0 = time.Now()
@@ -116,4 +112,51 @@ func Stage(
 			}
 		}
 	}
+}
+
+func executeQueryFile(
+	ctx context.Context,
+	tmpl *template.Template,
+	file string,
+	b *Batch,
+	metrics *StageMetrics,
+	logger *slog.Logger,
+	fileIndex int,
+) error {
+	var t0 = time.Now()
+
+	metrics.Active.Update(1)
+	defer metrics.Active.Update(0)
+
+	md, err := ch.ExecFromTemplate(
+		ctx,
+		b.Conn,
+		tmpl,
+		file,
+		b.Vars,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	var fileMetrics = metrics.Files[fileIndex]
+
+	fileMetrics.QueryExecutionTime.RecordDuration(time.Since(t0))
+	fileMetrics.Elapsed.RecordDuration(md.Elapsed)
+	fileMetrics.Rows.Inc(int64(md.Rows))
+	fileMetrics.Bytes.Inc(int64(md.Bytes))
+	fileMetrics.TotalRows.Inc(int64(md.TotalRows))
+	fileMetrics.WroteRows.Inc(int64(md.WroteRows))
+	fileMetrics.WroteBytes.Inc(int64(md.WroteBytes))
+
+	logger.Debug(
+		file,
+		"number", b.Number,
+		"start", b.Start,
+		"end", b.End,
+		"duration", time.Since(t0),
+	)
+
+	return nil
 }
