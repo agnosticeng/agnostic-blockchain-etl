@@ -3,7 +3,6 @@ create dictionary evm_abi_decoding (
     fullsigs Array(String)
 )
 primary key selector
--- source(file(path 'tmp/evm_abi_decoding.parquet' format 'Parquet'))
 source(http(url '{{.EVM_ABI_DECODING_URL}}' format 'Parquet'))
 lifetime(min 3600 max 7200)
 layout(hashed())
