@@ -99,7 +99,10 @@ func Stage(
 			}
 
 			for i, file := range conf.Files {
-				executeQueryFile(ctx, tmpl, file, b, metrics, logger, i)
+				if err := executeQueryFile(ctx, tmpl, file, b, metrics, logger, i); err != nil {
+					logger.Error(err.Error())
+					return err
+				}
 			}
 
 			var t0 = time.Now()

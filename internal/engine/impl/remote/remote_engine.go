@@ -30,12 +30,13 @@ func (eng *RemoteEngine) Start() error {
 }
 
 func (eng *RemoteEngine) Stop() {
+	eng.pool.Close()
 	close(eng.stopChan)
 }
 
 func (eng *RemoteEngine) Wait() error {
 	<-eng.stopChan
-	return eng.pool.Close()
+	return nil
 }
 
 func (eng *RemoteEngine) AcquireConn() (engine.Conn, error) {

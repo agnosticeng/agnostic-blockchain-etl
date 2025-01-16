@@ -24,4 +24,3 @@ select if(
         )
     )
 ) as start
-

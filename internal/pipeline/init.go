@@ -12,6 +12,7 @@ type InitConfig struct {
 	Setup        []string
 	Start        string
 	DefaultStart uint64
+	ForceStart   uint64
 }
 
 func (conf InitConfig) WithDefaults() InitConfig {
@@ -29,6 +30,10 @@ func Init(
 	vars map[string]interface{},
 	conf InitConfig,
 ) (uint64, error) {
+	if conf.ForceStart > 0 {
+		return conf.ForceStart, nil
+	}
+
 	var start = conf.DefaultStart
 
 	chconn, err := engine.AcquireConn()
@@ -53,8 +58,8 @@ func Init(
 		return start, err
 	}
 
-	if md.Rows > 0 {
-		start = sb.Start
+	if md.Rows > 0 && sb.Start != nil {
+		start = *sb.Start
 	}
 
 	return start, nil

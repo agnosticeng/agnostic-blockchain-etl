@@ -7,7 +7,7 @@ import (
 )
 
 type StartRow struct {
-	Start uint64 `ch:"start"`
+	Start *uint64 `ch:"start"`
 }
 
 type TipRow struct {

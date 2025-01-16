@@ -89,8 +89,9 @@ func NewLocalEngine(ctx context.Context, conf LocalEngineConfig) (*LocalEngine, 
 		defaultSettings = map[string]interface{}{
 			"path": "./",
 			"user_defined_executable_functions_config": "*_function.*ml",
-			"listen_host": "127.0.0.1",
-			"tcp_port":    9001,
+			"listen_host":                      "127.0.0.1",
+			"tcp_port":                         9001,
+			"shutdown_wait_unfinished_queries": 0,
 			"profiles": map[string]interface{}{
 				"default": map[string]interface{}{},
 			},
@@ -182,11 +183,33 @@ func NewLocalEngine(ctx context.Context, conf LocalEngineConfig) (*LocalEngine, 
 }
 
 func (eng *LocalEngine) Start() error {
+	eng.logger.Info("starting local clickhouse server")
 	return eng.cmd.Start()
 }
 
 func (eng *LocalEngine) Stop() {
-	eng.cmd.Process.Signal(syscall.SIGTERM)
+	defer func() {
+		eng.logger.Info("closing connection pool")
+		eng.pool.Close()
+	}()
+
+	if err := eng.cleanShutdown(context.Background()); err != nil {
+		eng.logger.Info("sending SIGTERM to local clickhouse server")
+		eng.cmd.Process.Signal(syscall.SIGTERM)
+	}
+}
+
+func (eng *LocalEngine) cleanShutdown(ctx context.Context) error {
+	conn, err := eng.pool.Acquire()
+
+	if err != nil {
+		return err
+	}
+
+	defer conn.Release()
+	eng.logger.Info("sending SYSTEM SHUTDOWN query to local clickhouse server")
+	_, err = conn.Exec(ctx, "SYSTEM SHUTDOWN")
+	return err
 }
 
 func (eng *LocalEngine) Wait() error {
@@ -194,7 +217,7 @@ func (eng *LocalEngine) Wait() error {
 		defer os.RemoveAll(eng.conf.WorkingDir)
 	}
 
-	eng.pool.Close()
+	eng.logger.Info("waiting for local clickhouse server to stop")
 	var err = eng.cmd.Wait()
 
 	if err == nil {

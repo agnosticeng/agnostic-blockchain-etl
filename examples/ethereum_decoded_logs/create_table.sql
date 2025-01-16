@@ -38,4 +38,5 @@ settings
         metadata_type=plain_rewritable,
         readonly=false
     ),
-    min_bytes_for_wide_part=536870912
+    min_bytes_for_wide_part=4294967296,
+    min_rows_for_wide_part=1000000000

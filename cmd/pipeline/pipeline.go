@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
@@ -45,12 +46,15 @@ func Command() *cli.Command {
 		Flags: Flags,
 		Action: func(ctx *cli.Context) error {
 			var (
-				logger       = slogctx.FromCtx(ctx.Context)
-				path         = ctx.Args().Get(0)
-				templatePath = ctx.String("template-path")
-				vars         = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
-				cfg          config
+				logger               = slogctx.FromCtx(ctx.Context)
+				path                 = ctx.Args().Get(0)
+				templatePath         = ctx.String("template-path")
+				vars                 = utils.ParseKeyValues(ctx.StringSlice("var"), "=")
+				cfg                  config
+				sigCtx, sigCtxCancel = signal.NotifyContext(ctx.Context, os.Interrupt, syscall.SIGTERM)
 			)
+
+			defer sigCtxCancel()
 
 			if len(path) == 0 {
 				return fmt.Errorf("pipeline path must be specified")
@@ -58,7 +62,7 @@ func Command() *cli.Command {
 
 			if err := cnf.Load(
 				&cfg,
-				cnf.WithProvider(objstrutils.NewCnfProvider(objstr.FromContextOrDefault(ctx.Context), path)),
+				cnf.WithProvider(objstrutils.NewCnfProvider(objstr.FromContextOrDefault(sigCtx), path)),
 				cnf.WithProvider(env.NewEnvProvider("AGN")),
 			); err != nil {
 				return err
@@ -74,18 +78,18 @@ func Command() *cli.Command {
 				u.Path = filepath.Dir(u.Path)
 			}
 
-			tmpl, err := utils.LoadTemplates(ctx.Context, u)
+			tmpl, err := utils.LoadTemplates(sigCtx, u)
 
 			if err != nil {
 				return err
 			}
 
-			var pipelineCtx, pipelineCancel = signal.NotifyContext(ctx.Context, syscall.SIGTERM)
+			var pipelineCtx, pipelineCancel = signal.NotifyContext(sigCtx, syscall.SIGTERM)
 			defer pipelineCancel()
 
 			var promReporter = promreporter.NewReporter(promreporter.Options{
 				OnRegisterError: func(err error) {
-					logger.Log(ctx.Context, -30, "failed to register metric", "error", err.Error())
+					logger.Log(sigCtx, -30, "failed to register metric", "error", err.Error())
 				},
 			})
 
@@ -121,7 +125,15 @@ func Command() *cli.Command {
 			var group, groupCtx = errgroup.WithContext(pipelineCtx)
 
 			group.Go(func() error {
-				return engine.Wait()
+				var err = engine.Wait()
+
+				if err != nil {
+					logger.Error("engine stopped", "error", err.Error())
+				} else {
+					logger.Info("engine stopped")
+				}
+
+				return err
 			})
 
 			group.Go(func() error {

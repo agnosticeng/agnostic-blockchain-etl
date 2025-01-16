@@ -1,5 +1,5 @@
-insert into sink
-select * from (
+create temporary table buffer_{{.START}}_{{.END}}
+as (
     with
         q0 as (
             select

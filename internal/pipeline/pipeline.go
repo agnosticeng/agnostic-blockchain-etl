@@ -39,6 +39,7 @@ func Run(
 	conf PipelineConfig,
 ) error {
 	var logger = slogctx.FromCtx(ctx)
+	defer logger.Info("pipeline finished running")
 
 	if len(conf.Steps) == 0 {
 		return fmt.Errorf("pipeline must have at leats 1 step")
@@ -84,7 +85,7 @@ func Run(
 	})
 
 	group.Go(func() error {
-		tipTrackerCtx = tallyctx.NewContext(groupctx, tallyctx.FromContextOrNoop(tipTrackerCtx).SubScope("tip_tracker"))
+		tipTrackerCtx = tallyctx.NewContext(tipTrackerCtx, tallyctx.FromContextOrNoop(tipTrackerCtx).SubScope("tip_tracker"))
 
 		return TipTracker(
 			tipTrackerCtx,
@@ -142,8 +143,7 @@ func Run(
 	}
 
 	group.Go(func() error {
-		var finalizerCtx = slogctx.With(groupctx, "module", "finalizer")
-		finalizerCtx = tallyctx.NewContext(finalizerCtx, tallyctx.FromContextOrNoop(finalizerCtx).SubScope("finalizer"))
+		var finalizerCtx = tallyctx.NewContext(groupctx, tallyctx.FromContextOrNoop(groupctx).SubScope("finalizer"))
 
 		return Finalizer(finalizerCtx, lastOutChan, conf.Finalizer)
 	})

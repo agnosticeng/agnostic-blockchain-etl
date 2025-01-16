@@ -1,11 +1,11 @@
 insert into 
 table function s3(
-    '{{.TARGET_ENDPOINT}}/{_partition_id}.parquet', 
+    '{{.TARGET_ENDPOINT}}/date={_partition_id}/data.parquet', 
     '{{.S3_ACCESS_KEY_ID}}',
-    "{{.S3_SECRET_ACCESS_KEY}}",
+    '{{.S3_SECRET_ACCESS_KEY}}',
     'Parquet'
 )
-partition by toYYYYMMDD(timestamp)
+partition by toDate(timestamp)
 select
     *
 from {{.SOURCE_TABLE}}

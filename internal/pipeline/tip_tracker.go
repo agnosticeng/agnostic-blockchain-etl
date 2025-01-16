@@ -14,6 +14,7 @@ import (
 type TipTrackerConfig struct {
 	Tip          string
 	PollInterval time.Duration
+	StopAfter    int
 }
 
 func (conf TipTrackerConfig) WithDefaults() TipTrackerConfig {
@@ -38,7 +39,10 @@ func TipTracker(
 ) error {
 	defer close(outchan)
 
-	var logger = slogctx.FromCtx(ctx)
+	var (
+		logger     = slogctx.FromCtx(ctx)
+		iterations int
+	)
 
 	logger.Debug("started")
 	defer logger.Debug("stopped")
@@ -75,6 +79,12 @@ func TipTracker(
 
 		if err != nil {
 			return err
+		}
+
+		iterations++
+
+		if iterations == conf.StopAfter {
+			return nil
 		}
 
 		select {

@@ -50,7 +50,7 @@ func Finalizer(
 				return nil
 			}
 
-			items = items + (b.End - b.Start)
+			items = items + (b.End - b.Start) + 1
 			maxEnd = max(maxEnd, b.End)
 
 			logger.Info(
