@@ -64,13 +64,19 @@ partition by toYYYYMM(timestamp)
 order by (block_number, transaction_index)
 settings 
     disk = disk(
-        type=s3,
-        endpoint='{{.S3_ENDPOINT}}',
-        region='{{.S3_REGION}}',
-        access_key_id='{{.S3_ACCESS_KEY_ID}}',
-        secret_access_key='{{.S3_SECRET_ACCESS_KEY}}',
-        use_environment_credentials=0,
-        metadata_type=plain_rewritable,
-        readonly=false
+        type=cache,
+        max_size='{{.CACHE_MAX_SIZE}}',
+        path='{{.CACHE_PATH}}',
+        disk = disk(
+            type=s3,
+            endpoint='{{.S3_ENDPOINT}}',
+            region='{{.S3_REGION}}',
+            access_key_id='{{.S3_ACCESS_KEY_ID}}',
+            secret_access_key='{{.S3_SECRET_ACCESS_KEY}}',
+            use_environment_credentials=0,
+            metadata_type=plain_rewritable,
+            readonly=false
+        )
     ),
-    min_bytes_for_wide_part=536870912
+    min_bytes_for_wide_part=4294967296,
+    min_rows_for_wide_part=1000000000

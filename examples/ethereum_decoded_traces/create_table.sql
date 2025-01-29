@@ -1,4 +1,4 @@
-attach table if not exists {{.CHAIN}}_decoded_logs uuid '{{.TABLE_UUID}}' (
+attach table if not exists {{.CHAIN}}_decoded_traces uuid '{{.TABLE_UUID}}' (
     timestamp DateTime64(3, 'UTC') CODEC(ZSTD),
     block_hash FixedString(32) CODEC(ZSTD),
     block_number UInt64 CODEC(ZSTD),
@@ -6,27 +6,36 @@ attach table if not exists {{.CHAIN}}_decoded_logs uuid '{{.TABLE_UUID}}' (
     transaction_status UInt8 CODEC(ZSTD),
     transaction_hash FixedString(32) CODEC(ZSTD),
     transaction_index UInt32 CODEC(ZSTD),
-    log_index UInt32 CODEC(ZSTD),
-    address FixedString(20) CODEC(ZSTD),
+    subtraces UInt32 CODEC(ZSTD),
+    trace_address Array(UInt32) CODEC(ZSTD),
+    error String CODEC(ZSTD),
+    call_type LowCardinality(String) CODEC(ZSTD),
+    from FixedString(20) CODEC(ZSTD),
+    gas UInt64 CODEC(ZSTD),
+    to FixedString(20) CODEC(ZSTD),
+    value UInt256 CODEC(ZSTD),
+    gas_used UInt64 CODEC(ZSTD),
     signature String CODEC(ZSTD),
     inputs JSON CODEC(ZSTD),
+    outputs JSON CODEC(ZSTD),
 
     index idx_timestamp timestamp type minmax granularity 1,
     index idx_block_number block_number type minmax granularity 1,
     index idx_block_hash block_hash type bloom_filter granularity 4,
     index idx_transaction_from transaction_from type bloom_filter granularity 4,
     index idx_transaction_hash transaction_hash type bloom_filter granularity 4,
-    index idx_address address type bloom_filter granularity 4,
+    index idx_from from type bloom_filter granularity 4,
     index idx_signature signature type bloom_filter granularity 4
 )
 engine = ReplacingMergeTree
 partition by toYYYYMM(timestamp)
 order by (
-    address,
+    to,
     signature,
     timestamp,
     block_number,
-    log_index
+    transaction_index,
+    trace_address
 )
 settings 
     disk = disk(

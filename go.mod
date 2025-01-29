@@ -8,8 +8,8 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/agnosticeng/cliutils v0.1.0
 	github.com/agnosticeng/cnf v0.1.0
-	github.com/agnosticeng/concu v0.0.1
-	github.com/agnosticeng/objstr v0.1.1
+	github.com/agnosticeng/concu v0.0.2
+	github.com/agnosticeng/objstr v0.1.2
 	github.com/agnosticeng/panicsafe v0.5.0
 	github.com/agnosticeng/slogcli v0.1.1
 	github.com/agnosticeng/tallyctx v0.1.1
@@ -18,7 +18,7 @@ require (
 	github.com/iancoleman/strcase v0.3.0
 	github.com/mholt/archiver/v4 v4.0.0-alpha.9
 	github.com/prometheus/client_golang v1.20.5
-	github.com/samber/lo v1.47.0
+	github.com/samber/lo v1.49.1
 	github.com/uber-go/tally/v4 v4.1.16
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/veqryn/slog-context v0.7.0
@@ -32,10 +32,9 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/STARRY-S/zip v0.1.0 // indirect
 	github.com/agnosticeng/dynamap v0.1.2 // indirect
-	github.com/agnosticeng/errgroup v0.2.0 // indirect
 	github.com/agnosticeng/mapstructure-hooks v0.3.0 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
-	github.com/aws/aws-sdk-go v1.55.5 // indirect
+	github.com/aws/aws-sdk-go v1.55.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.5.2 // indirect
@@ -68,12 +67,12 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.61.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	github.com/redis/rueidis v1.0.51 // indirect
+	github.com/redis/rueidis v1.0.53 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.5 // indirect
-	github.com/spf13/afero v1.11.0 // indirect
+	github.com/spf13/afero v1.12.0 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	github.com/ulikunitz/xz v0.5.12 // indirect
@@ -82,9 +81,9 @@ require (
 	go.opentelemetry.io/otel/trace v1.30.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go4.org v0.0.0-20230225012048-214862532bf5 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

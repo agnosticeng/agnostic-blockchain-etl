@@ -24,7 +24,7 @@ as (
                 q0.* except (topics, data),
                 JSONExtract(
                     evm_decode_event(
-                        topics::Array(String),
+                        topics::Array(FixedString(32)),
                         data::String,
                         dictGet(evm_abi_decoding, 'fullsigs', topics[1]::String)
                     ),
