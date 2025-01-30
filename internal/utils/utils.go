@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -44,8 +45,24 @@ func CachedDownload(ctx context.Context, src string, dest string) error {
 		return err
 	}
 
-	if _, err := os.Stat(dest); err == nil {
-		return nil
+	if len(srcUrl.Fragment) > 0 {
+		q, err := url.ParseQuery(srcUrl.Fragment)
+
+		if err != nil {
+			return err
+		}
+
+		b, err := strconv.ParseBool(q.Get("disable-cache"))
+
+		if err != nil {
+			return err
+		}
+
+		if !b {
+			if _, err := os.Stat(dest); err == nil {
+				return nil
+			}
+		}
 	}
 
 	return objstr.FromContextOrDefault(ctx).Copy(ctx, srcUrl, &url.URL{Scheme: "file", Path: dest})
