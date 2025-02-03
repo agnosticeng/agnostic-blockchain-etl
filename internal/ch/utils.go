@@ -32,9 +32,5 @@ func LogQueryMetadata(ctx context.Context, logger *slog.Logger, level slog.Level
 			"wrote_bytes", md.WroteBytes,
 			"elapsed", md.Elapsed,
 		)
-
-		for _, log := range md.Logs {
-			logger.Debug(log.Text, "source", log.Source)
-		}
 	}
 }

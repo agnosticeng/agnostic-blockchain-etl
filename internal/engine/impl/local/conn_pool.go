@@ -3,6 +3,7 @@ package local
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/ch"
 	"github.com/agnosticeng/agnostic-blockchain-etl/internal/engine"
 	"github.com/hashicorp/go-multierror"
+	slogctx "github.com/veqryn/slog-context"
 )
 
 type ConnPoolConfig struct {
@@ -21,13 +23,14 @@ type ConnPoolConfig struct {
 }
 
 type ConnPool struct {
+	logger  *slog.Logger
 	conf    ConnPoolConfig
 	lock    sync.Mutex
 	counter int
 	conns   map[int]*Conn
 }
 
-func NewConnPool(conf ConnPoolConfig) *ConnPool {
+func NewConnPool(ctx context.Context, conf ConnPoolConfig) *ConnPool {
 	if conf.MaxConnLifetime == 0 {
 		conf.MaxConnLifetime = time.Hour
 	}
@@ -37,8 +40,9 @@ func NewConnPool(conf ConnPoolConfig) *ConnPool {
 	}
 
 	return &ConnPool{
-		conf:  conf,
-		conns: make(map[int]*Conn),
+		logger: slogctx.FromCtx(ctx),
+		conf:   conf,
+		conns:  make(map[int]*Conn),
 	}
 }
 
@@ -144,7 +148,7 @@ func (conn *Conn) Exec(ctx context.Context, query string, args ...any) (*engine.
 			clickhouse.Context(
 				ctx,
 				clickhouse.WithProgress(progressHandler(&md)),
-				clickhouse.WithLogs(logHandler(&md)),
+				clickhouse.WithLogs(logHandler(conn.pool.logger)),
 			),
 			query,
 			args...,
@@ -161,7 +165,7 @@ func (conn *Conn) Select(ctx context.Context, res any, query string, args ...any
 			clickhouse.Context(
 				ctx,
 				clickhouse.WithProgress(progressHandler(&md)),
-				clickhouse.WithLogs(logHandler(&md)),
+				clickhouse.WithLogs(logHandler(conn.pool.logger)),
 			),
 			res,
 			query,
@@ -191,17 +195,16 @@ func progressHandler(md *engine.QueryMetadata) func(*proto.Progress) {
 	}
 }
 
-func logHandler(md *engine.QueryMetadata) func(*clickhouse.Log) {
+func logHandler(logger *slog.Logger) func(*clickhouse.Log) {
 	return func(l *clickhouse.Log) {
-		md.Logs = append(md.Logs, &engine.Log{
-			Time:     l.Time,
-			Hostname: l.Hostname,
-			QueryID:  l.QueryID,
-			ThreadID: l.ThreadID,
-			Priority: l.Priority,
-			Source:   l.Source,
-			Text:     l.Text,
-		})
+		logger.Info(
+			l.Text,
+			"hostname", l.Hostname,
+			"query_id", l.QueryID,
+			"thread_id", l.ThreadID,
+			"priority", l.Priority,
+			"source", l.Source,
+		)
 	}
 }
 

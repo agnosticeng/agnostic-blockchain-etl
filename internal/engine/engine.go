@@ -19,7 +19,6 @@ type QueryMetadata struct {
 	WroteRows  uint64
 	WroteBytes uint64
 	Elapsed    time.Duration
-	Logs       []*Log
 }
 
 type Log struct {

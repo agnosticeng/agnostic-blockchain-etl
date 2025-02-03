@@ -178,7 +178,7 @@ func NewLocalEngine(ctx context.Context, conf LocalEngineConfig) (*LocalEngine, 
 		conf:   conf,
 		logger: logger,
 		cmd:    cmd,
-		pool:   NewConnPool(conf.ConnPoolConfig),
+		pool:   NewConnPool(ctx, conf.ConnPoolConfig),
 	}, nil
 }
 
@@ -224,8 +224,8 @@ func (eng *LocalEngine) Wait() error {
 		return nil
 	}
 
-	content, _ := os.ReadFile(filepath.Join(eng.conf.WorkingDir, "clickhouse-server-error.log"))
-	eng.logger.Error("clickhouse server error", "log", string(content))
+	// content, _ := os.ReadFile(filepath.Join(eng.conf.WorkingDir, "clickhouse-server-error.log"))
+	// eng.logger.Error("clickhouse server error", "log", string(content))
 	return err
 }
 

@@ -20,7 +20,7 @@ type RemoteEngine struct {
 func NewRemoteEngine(ctx context.Context, conf RemoteEngineConfig) (*RemoteEngine, error) {
 	return &RemoteEngine{
 		conf:     conf,
-		pool:     local.NewConnPool(conf.ConnPoolConfig),
+		pool:     local.NewConnPool(ctx, conf.ConnPoolConfig),
 		stopChan: make(chan interface{}, 1),
 	}, nil
 }

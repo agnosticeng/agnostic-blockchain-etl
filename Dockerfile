@@ -14,6 +14,7 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 
 
 FROM debian:bullseye
+LABEL org.opencontainers.image.source=https://github.com/OWNER/REPO
 ARG CLICKHOUSE_VERSION
 
 COPY --from=build /code/bin/* /
